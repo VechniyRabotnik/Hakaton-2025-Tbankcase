@@ -1,325 +1,212 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 
 type Wish = {
   id: string;
   title: string;
   price: number;
   category: string;
-  createdAt: string;
   coolingDays: number;
   recommendedCooling: number;
-  fromLink?: boolean;
-  parsed?: boolean;
   stillWant: boolean;
 };
 
-const DEFAULT_COOLING_RANGES = [
-  { from: 0, to: 5000, days: 3 },
-  { from: 5000, to: 50000, days: 7 },
-  { from: 50000, to: 100000, days: 30 },
-  { from: 100000, to: Infinity, days: 90 },
-];
-
-function uid() {
-  return Math.random().toString(36).slice(2, 10);
-}
+const API_BASE = "http://localhost:8080/api/wishes";
 
 export default function HomePage() {
-  const [link, setLink] = useState("");
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState<number | "">("");
   const [category, setCategory] = useState("");
+  const [savings, setSavings] = useState<number | "">("");
+  const [perMonth, setPerMonth] = useState<number | "">("");
+  const [wishes, setWishes] = useState<Wish[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const [blockedCategories, setBlockedCategories] = useState<string[]>(() => {
+  const userId = "testmeowmeowmeow";
+
+  async function fetchWishes() {
     try {
-      const raw = localStorage.getItem("cooler:blocked");
-      return raw ? JSON.parse(raw) : ["Косметика", "Транспорт", "Фигурки"];
-    } catch {
-      return ["Косметика", "Транспорт", "Фигурки"];
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/${userId}`);
+      if (!res.ok) throw new Error(await res.text());
+      const data: Wish[] = await res.json();
+      setWishes(data);
+    } catch (err: any) {
+      console.error("Ошибка получения желаний:", err.message);
+    } finally {
+      setLoading(false);
     }
-  });
-
-  const [coolingRanges] = useState(DEFAULT_COOLING_RANGES);
-
-  const [considerSavings, setConsiderSavings] = useState(false);
-  const [savings, setSavings] = useState(0);
-  const [perMonth, setPerMonth] = useState(0);
-
-  const [wishes, setWishes] = useState<Wish[]>(() => {
-    try {
-      const raw = localStorage.getItem("cooler:wishes");
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
+  }
 
   useEffect(() => {
-    localStorage.setItem("cooler:wishes", JSON.stringify(wishes));
-  }, [wishes]);
+    fetchWishes();
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem("cooler:blocked", JSON.stringify(blockedCategories));
-  }, [blockedCategories]);
-
-  function mockParseLink(url: string) {
-    return new Promise<{ title: string; price: number; category: string }>((res) => {
-      setTimeout(() => {
-        res({
-          title: "Товар с сайта <3",
-          price: 2025,
-          category: "Фигурка",
-        });
-      }, 1000);
-    });
-  }
-
-  async function parseFromLink() {
-    if (!link.trim()) return alert("Введите ссылку");
-
-    const data = await mockParseLink(link);
-    setTitle(data.title);
-    setPrice(data.price);
-    setCategory(data.category);
-  }
-
-  // Logic
-
-  function isBlocked(cat: string) {
-    const c = cat.toLowerCase();
-    return blockedCategories.some((b) => c.includes(b.toLowerCase()));
-  }
-
-  function calculateCooling(price: number) {
-    const range = coolingRanges.find((r) => price >= r.from && price < r.to);
-    return range ? range.days : 7;
-  }
-
-  function calculateExtraSavingDelay(price: number) {
-    if (!considerSavings) return 0;
-    if (savings >= price) return 0;
-    if (perMonth <= 0) return 99999;
-    const diff = price - savings;
-    return Math.ceil(diff / perMonth) * 30;
-  }
-
-  function addWish() {
-    if (!title.trim() || price === "") return alert("Введите корректные данные о товаре");
-
-    if (isBlocked(category)) {
-      return alert("Категория товара входит в список запрещённых. Покупка запрещена.");
+  async function addWish() {
+    if (
+      !title ||
+      price === "" ||
+      price <= 0 ||
+      (savings !== "" && savings < 0) ||
+      (perMonth !== "" && perMonth < 0)
+    ) {
+      alert("Введите корректные данные");
+      return;
     }
 
-    const priceNum = Number(price);
-    const baseCooling = calculateCooling(priceNum);
-    const savingDelay = calculateExtraSavingDelay(priceNum);
-    const recommended = baseCooling + savingDelay;
+    try {
+      const res = await fetch(`${API_BASE}/${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          price: Number(price),
+          category,
+          savings: savings !== "" ? Number(savings) : 0,
+          perMonth: perMonth !== "" ? Number(perMonth) : 0,
+        }),
+      });
 
-    const w: Wish = {
-      id: uid(),
-      title: title.trim(),
-      price: priceNum,
-      category: category.trim() || "Прочее",
-      createdAt: new Date().toISOString(),
-      coolingDays: baseCooling,
-      recommendedCooling: recommended,
-      stillWant: true,
-      fromLink: Boolean(link),
-      parsed: Boolean(link),
-    };
+      if (!res.ok) {
+        const err = await res.text();
+        alert("Ошибка: " + err);
+        return;
+      }
 
-    setWishes((s) => [w, ...s]);
+      
+      setTitle("");
+      setPrice("");
+      setCategory("");
+      setSavings("");
+      setPerMonth("");
 
-    setTitle("");
-    setPrice("");
-    setCategory("");
-    setLink("");
+      fetchWishes(); 
+    } catch (err: any) {
+      console.error("Ошибка добавления желания:", err.message);
+    }
   }
 
-  function removeWish(id: string) {
-    setWishes((s) => s.filter((w) => w.id !== id));
+  async function toggleStillWant(id: string) {
+    try {
+      const res = await fetch(`${API_BASE}/${userId}/${id}`, { method: "PUT" });
+      if (!res.ok) throw new Error(await res.text());
+      fetchWishes();
+    } catch (err: any) {
+      console.error("Ошибка переключения:", err.message);
+    }
   }
 
-  function toggleStillWant(id: string) {
-    setWishes((s) => s.map((w) => (w.id === id ? { ...w, stillWant: !w.stillWant } : w)));
+  async function removeWish(id: string) {
+    try {
+      const res = await fetch(`${API_BASE}/${userId}/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(await res.text());
+      fetchWishes();
+    } catch (err: any) {
+      console.error("Ошибка удаления:", err.message);
+    }
   }
-
-  const summary = useMemo(() => {
-    const total = wishes.reduce((a, b) => a + b.price, 0);
-    return { count: wishes.length, total };
-  }, [wishes]);
-
-  // UI
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-yellow-100 p-6 dark:from-yellow-900 dark:to-yellow-950">
-      <main className="mx-auto max-w-5xl space-y-10 rounded-xl bg-white p-8 shadow-xl dark:bg-neutral-900">
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Image src="/tbank.svg" width={60} height={20} alt="Logo" className="dark:invert" />
-            <h1 className="text-3xl font-bold dark:text-neutral-100">T-Желания — помощник против импульсивных покупок</h1>
-          </div>
-          <div className="rounded-lg bg-amber-100 px-4 py-2 text-sm text-amber-800 dark:bg-yellow-800 dark:text-yellow-100">
-            <div>Товаров: {summary.count}</div>
-            <div>На сумму: {summary.total} ₽</div>
-          </div>
-        </header>
-
-
-
-        <section className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          <div className="space-y-4 rounded-xl border bg-amber-50 p-6 shadow dark:bg-neutral-800">
-            <h2 className="text-xl font-semibold dark:text-neutral-100">Добавить товар</h2>
-
-            <div>
-              <label className="text-sm font-medium">Ссылка на товар</label>
-              <input
-                value={link}
-                onChange={(e) => setLink(e.target.value)}
-                placeholder="https://..."
-                className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-neutral-700"
-              />
-              <button
-                onClick={parseFromLink}
-                className="mt-2 rounded-lg bg-amber-600 px-4 py-2 text-white shadow hover:bg-amber-700 dark:bg-yellow-700"
-              >
-                Сканировать
-              </button>
-            </div>
-
-            <hr className="border-amber-300 dark:border-yellow-700" />
-
-            <div>
-              <label className="text-sm font-medium">Название</label>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-neutral-700"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Цена (₽)</label>
-              <input
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-neutral-700"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Категория</label>
-              <input
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-neutral-700"
-              />
-            </div>
-
-            <button
-              onClick={addWish}
-              className="mt-4 w-full rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white shadow hover:bg-amber-700 dark:bg-yellow-700"
+    <div className="min-h-screen bg-gray-900 text-yellow-100 p-4 sm:p-6 font-sans">
+      <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
+        <h1 className="text-4xl font-extrabold mb-2 sm:mb-0 text-yellow-300 text-center sm:text-left">
+          T-Желания — Помощник против импульсивных покупок
+        </h1>
+        <div className="flex gap-3">
+          <button className="px-4 py-2 bg-gray-800 text-yellow-300 rounded hover:bg-gray-700 transition font-semibold disabled:opacity-50" disabled>
+            Личный кабинет
+          </button>
+          <button className="px-4 py-2 bg-gray-800 text-yellow-300 rounded hover:bg-gray-700 transition font-semibold disabled:opacity-50" disabled>
+            Настройки
+          </button>
+        </div>
+      </div>
+      <div className="mb-10 grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-800 p-4 rounded-lg shadow-lg">
+        <input
+          placeholder="Название"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="p-3 rounded-lg border border-yellow-400 bg-gray-900 text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-300 transition"
+        />
+        <input
+          placeholder="Цена"
+          type="number"
+          value={price}
+          onChange={(e) => {
+            const val = e.target.value;
+            setPrice(val !== "" ? Number(val) : "");
+          }}
+          className="p-3 rounded-lg border border-yellow-400 bg-gray-900 text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-300 transition"
+        />
+        <input
+          placeholder="Категория"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="p-3 rounded-lg border border-yellow-400 bg-gray-900 text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-300 transition"
+        />
+        <input
+          placeholder="Накопления"
+          type="number"
+          value={savings}
+          onChange={(e) => {
+            const val = e.target.value;
+            setSavings(val !== "" ? Number(val) : "");
+          }}
+          className="p-3 rounded-lg border border-yellow-400 bg-gray-900 text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-300 transition"
+        />
+        <input
+          placeholder="Откладываю в месяц"
+          type="number"
+          value={perMonth}
+          onChange={(e) => {
+            const val = e.target.value;
+            setPerMonth(val !== "" ? Number(val) : "");
+          }}
+          className="p-3 rounded-lg border border-yellow-400 bg-gray-900 text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-300 transition"
+        />
+        <button
+          onClick={addWish}
+          className="mt-4 md:mt-0 col-span-1 md:col-span-2 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold py-3 px-6 rounded-lg shadow-lg transition w-full"
+        >
+          Добавить желание
+        </button>
+      </div>
+      {loading ? (
+        <p className="text-center text-yellow-300">Загрузка...</p>
+      ) : wishes && wishes.length === 0 ? (
+        <p className="text-center text-yellow-300">У вас пока нет желаний. Добавьте новое выше.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {wishes?.map((w) => (
+            <div
+              key={w.id}
+              className="bg-gray-800 p-4 rounded-lg shadow-lg border-2 border-yellow-400 transition-transform hover:scale-105 hover:shadow-xl"
             >
-              Добавить в список
-            </button>
-          </div>
-
-          <div className="space-y-4 rounded-xl border bg-white p-6 shadow dark:bg-neutral-800">
-            <h3 className="text-xl font-semibold dark:text-neutral-100">Финансовые параметры</h3>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={considerSavings}
-                onChange={(e) => setConsiderSavings(e.target.checked)}
-              />
-              <span className="text-sm dark:text-neutral-200">Учитывать накопления</span>
+              <h2 className="text-xl font-bold mb-2">{w.title}</h2>
+              <p>Цена: {w.price} ₽</p>
+              <p>Категория: {w.category}</p>
+              <p>Базовое охлаждение: {w.coolingDays} дн</p>
+              <p>Рекомендуется ждать: {w.recommendedCooling} дн</p>
+              <p>Статус: {w.stillWant ? "Хочу" : "Не хочу"}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={() => toggleStillWant(w.id)}
+                  className="px-3 py-1 bg-black text-yellow-300 border border-yellow-300 rounded hover:bg-yellow-300 hover:text-black transition font-semibold"
+                >
+                  Переключить
+                </button>
+                <button
+                  onClick={() => removeWish(w.id)}
+                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded transition font-semibold"
+                >
+                  Удалить
+                </button>
+              </div>
             </div>
-
-            {considerSavings && (
-              <>
-                <div>
-                  <label className="text-sm font-medium">Текущие накопления (₽)</label>
-                  <input
-                    type="number"
-                    value={savings}
-                    onChange={(e) => setSavings(Number(e.target.value))}
-                    className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-neutral-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Откладываю в месяц (₽)</label>
-                  <input
-                    type="number"
-                    value={perMonth}
-                    onChange={(e) => setPerMonth(Number(e.target.value))}
-                    className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-neutral-700"
-                  />
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className="text-sm font-medium">Запрещённые категории</label>
-              <textarea
-                value={blockedCategories.join(", ")}
-                onChange={(e) => setBlockedCategories(e.target.value.split(","))}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:bg-neutral-700"
-              />
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-xl border bg-white p-6 shadow dark:bg-neutral-800">
-          <h3 className="mb-5 text-2xl font-semibold dark:text-neutral-100">Список желаний</h3>
-
-          {wishes.length === 0 && (
-            <div className="text-amber-700 dark:text-yellow-300">Пока пусто — добавьте первый товар!</div>
-          )}
-
-          <ul className="space-y-4">
-            {wishes.map((w) => (
-              <li
-                key={w.id}
-                className="flex flex-col justify-between gap-4 rounded-xl border bg-amber-50 p-4 shadow dark:bg-neutral-700 md:flex-row"
-              >
-                <div className="space-y-1">
-                  <strong className="text-lg dark:text-neutral-100">{w.title}</strong>
-                  <div className="text-sm dark:text-neutral-300">Цена: {w.price} ₽</div>
-                  <div className="text-sm dark:text-neutral-300">Категория: {w.category}</div>
-                  <div className="text-sm dark:text-neutral-300">
-                    Базовое охлаждение: {w.coolingDays} дней
-                  </div>
-                  <div className="text-sm dark:text-neutral-200 font-medium">
-                    Рекомендуется ждать: {w.recommendedCooling} дней
-                  </div>
-                </div>
-
-                <div className="flex items-end gap-2 md:flex-col md:items-end">
-                  <button
-                    onClick={() => toggleStillWant(w.id)}
-                    className="rounded-lg border px-3 py-1 text-sm shadow dark:bg-neutral-800 dark:text-neutral-100"
-                  >
-                    {w.stillWant ? "Всё ещё хочу" : "Не хочу"}
-                  </button>
-
-                  <button
-                    onClick={() => removeWish(w.id)}
-                    className="rounded-lg bg-red-600 px-3 py-1 text-sm font-medium text-white shadow hover:bg-red-700"
-                  >
-                    Удалить
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </main>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
