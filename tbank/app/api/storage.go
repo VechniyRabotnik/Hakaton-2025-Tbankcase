@@ -6,15 +6,19 @@ import (
 )
 
 type Storage struct {
-	data map[string][]Wish
-	mu   sync.Mutex
+	data     map[string][]Wish
+	settings map[string]Settings
+	mu       sync.Mutex
 }
 
 func NewStorage() *Storage {
 	return &Storage{
-		data: make(map[string][]Wish),
+		data:     make(map[string][]Wish),
+		settings: make(map[string]Settings),
 	}
 }
+
+// Wishes
 
 func (s *Storage) GetWishes(userId string) []Wish {
 	s.mu.Lock()
@@ -38,7 +42,6 @@ func (s *Storage) ToggleStillWant(userId, wishId string) {
 	for i, w := range wishes {
 		if w.ID == wishId {
 			wishes[i].StillWant = !w.StillWant
-			log.Printf("[Storage] Toggled StillWant for user %s, wish %s -> %v\n", userId, wishId, wishes[i].StillWant)
 			break
 		}
 	}
@@ -48,13 +51,25 @@ func (s *Storage) ToggleStillWant(userId, wishId string) {
 func (s *Storage) RemoveWish(userId, wishId string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	wishes := s.data[userId]
 	newWishes := []Wish{}
-	for _, w := range wishes {
+	for _, w := range s.data[userId] {
 		if w.ID != wishId {
 			newWishes = append(newWishes, w)
 		}
 	}
 	s.data[userId] = newWishes
-	log.Printf("[Storage] Removed wish for user %s, wish %s\n", userId, wishId)
+}
+
+// Settings
+
+func (s *Storage) GetSettings(userId string) Settings {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.settings[userId]
+}
+
+func (s *Storage) SaveSettings(userId string, set Settings) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.settings[userId] = set
 }

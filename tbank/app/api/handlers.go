@@ -15,12 +15,22 @@ func generateUID() string {
 	return strconv.FormatInt(time.Now().UnixNano(), 36) + strconv.Itoa(rand.Intn(1000))
 }
 
+func calcRecommendedCooling(price float64, settings Settings) int {
+	for _, r := range settings.Cooldowns {
+		if price >= r.Min && price <= r.Max {
+			return r.Period
+		}
+	}
+	return 7 // дефолт
+}
+
+// Wishes
+
 func GetWishesHandler(storage *Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userId := mux.Vars(r)["userId"]
-		log.Printf("[Handler] GET wishes for user %s\n", userId)
 		wishes := storage.GetWishes(userId)
-		w.Header().Set("Content-Type", "application/json")
+
 		json.NewEncoder(w).Encode(wishes)
 	}
 }
@@ -28,51 +38,36 @@ func GetWishesHandler(storage *Storage) http.HandlerFunc {
 func AddWishHandler(storage *Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userId := mux.Vars(r)["userId"]
-		log.Printf("[Handler] POST wish for user %s\n", userId)
 
-		var req struct {
+		var body struct {
 			Title    string  `json:"title"`
 			Price    float64 `json:"price"`
 			Category string  `json:"category"`
-			Savings  float64 `json:"savings"`
-			PerMonth float64 `json:"perMonth"`
 		}
+		json.NewDecoder(r.Body).Decode(&body)
 
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		baseCooling := 3
-		recommended := baseCooling
-		if req.PerMonth > 0 && req.Savings < req.Price {
-			days := int(((req.Price - req.Savings) / req.PerMonth) * 30)
-			recommended += days
-		}
+		settings := storage.GetSettings(userId)
 
 		wish := Wish{
 			ID:                 generateUID(),
-			Title:              req.Title,
-			Price:              req.Price,
-			Category:           req.Category,
-			CoolingDays:        baseCooling,
-			RecommendedCooling: recommended,
+			Title:              body.Title,
+			Price:              body.Price,
+			Category:           body.Category,
+			CoolingDays:        0,
+			RecommendedCooling: calcRecommendedCooling(body.Price, settings),
 			StillWant:          true,
 			CreatedAt:          time.Now(),
 		}
 
 		storage.AddWish(userId, wish)
-		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(wish)
 	}
 }
 
 func ToggleWishHandler(storage *Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		userId := vars["userId"]
-		wishId := vars["wishId"]
-		log.Printf("[Handler] PUT toggle wish %s for user %s\n", wishId, userId)
+		userId := mux.Vars(r)["userId"]
+		wishId := mux.Vars(r)["wishId"]
 
 		storage.ToggleStillWant(userId, wishId)
 		w.WriteHeader(http.StatusOK)
@@ -81,12 +76,33 @@ func ToggleWishHandler(storage *Storage) http.HandlerFunc {
 
 func RemoveWishHandler(storage *Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		userId := vars["userId"]
-		wishId := vars["wishId"]
-		log.Printf("[Handler] DELETE wish %s for user %s\n", wishId, userId)
+		userId := mux.Vars(r)["userId"]
+		wishId := mux.Vars(r)["wishId"]
 
 		storage.RemoveWish(userId, wishId)
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// Settings
+
+func GetSettingsHandler(storage *Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId := mux.Vars(r)["userId"]
+		json.NewEncoder(w).Encode(storage.GetSettings(userId))
+	}
+}
+
+func SaveSettingsHandler(storage *Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId := mux.Vars(r)["userId"]
+
+		var set Settings
+		json.NewDecoder(r.Body).Decode(&set)
+
+		storage.SaveSettings(userId, set)
+
+		log.Println("[Settings] Saved:", set)
 		w.WriteHeader(http.StatusOK)
 	}
 }
