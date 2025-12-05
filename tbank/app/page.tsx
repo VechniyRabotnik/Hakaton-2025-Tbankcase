@@ -1,90 +1,142 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 type Wish = {
   id: string;
   title: string;
   price: number;
   category: string;
-  createdAt: string; 
-  coolingUntil: string; 
-  savingsAtCreation: number;
-  monthlyAllocation: number; // сколько пользователь может откладывать в месяц
-  stillWant?: boolean;
+  createdAt: string;
+  coolingDays: number;
+  recommendedCooling: number;
+  fromLink?: boolean;
+  parsed?: boolean;
+  stillWant: boolean;
 };
 
-const BLOCKED_CATEGORIES = ["игры", "техника", "шопинг"];
+const DEFAULT_COOLING_RANGES = [
+  { from: 0, to: 5000, days: 3 },
+  { from: 5000, to: 50000, days: 7 },
+  { from: 50000, to: 100000, days: 30 },
+  { from: 100000, to: Infinity, days: 90 },
+];
 
 function uid() {
-  return Math.random().toString(36).slice(2, 9);
+  return Math.random().toString(36).slice(2, 10);
 }
 
-export default function Home() {
+export default function HomePage() {
+  const [link, setLink] = useState("");
   const [title, setTitle] = useState("");
-  const [price, setPrice] = useState(0);
+  const [price, setPrice] = useState<number | "">("");
   const [category, setCategory] = useState("");
-  const [coolDays, setCoolDays] = useState(3);
-  const [savings, setSavings] = useState(0);
-  const [monthlyAllocation, setMonthlyAllocation] = useState(0);
-  const [wishes, setWishes] = useState<Wish[]>([]);
 
-  useEffect(() => {
+  const [blockedCategories, setBlockedCategories] = useState<string[]>(() => {
     try {
-      const raw = localStorage.getItem("tbankwishcooler:wishes");
-      if (raw) setWishes(JSON.parse(raw));
-      const rawS = localStorage.getItem("tbankwishcooler:savings");
-      if (rawS) setSavings(Number(rawS));
-      const rawM = localStorage.getItem("tbankwishcooler:monthlyAllocation");
-      if (rawM) setMonthlyAllocation(Number(rawM));
-    } catch (e) {
-      console.error(e);
+      const raw = localStorage.getItem("cooler:blocked");
+      return raw ? JSON.parse(raw) : ["Косметика", "Транспорт", "Фигурки"];
+    } catch {
+      return ["Косметика", "Транспорт", "Фигурки"];
     }
-  }, []);
+  });
+
+  const [coolingRanges] = useState(DEFAULT_COOLING_RANGES);
+
+  const [considerSavings, setConsiderSavings] = useState(false);
+  const [savings, setSavings] = useState(0);
+  const [perMonth, setPerMonth] = useState(0);
+
+  const [wishes, setWishes] = useState<Wish[]>(() => {
+    try {
+      const raw = localStorage.getItem("cooler:wishes");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
-    localStorage.setItem("tbankwishcooler:wishes", JSON.stringify(wishes));
+    localStorage.setItem("cooler:wishes", JSON.stringify(wishes));
   }, [wishes]);
 
   useEffect(() => {
-    localStorage.setItem("tbankwishcooler:savings", String(savings));
-  }, [savings]);
+    localStorage.setItem("cooler:blocked", JSON.stringify(blockedCategories));
+  }, [blockedCategories]);
 
-  useEffect(() => {
-    localStorage.setItem("tbankwishcooler:monthlyAllocation", String(monthlyAllocation));
-  }, [monthlyAllocation]);
-
-  // Проверка заблокированных категорий
-  function isBlocked(cat: string) {
-    const c = cat.trim().toLowerCase();
-    return BLOCKED_CATEGORIES.some((b) => c.includes(b));
+  function mockParseLink(url: string) {
+    return new Promise<{ title: string; price: number; category: string }>((res) => {
+      setTimeout(() => {
+        res({
+          title: "Товар с сайта <3",
+          price: 2025,
+          category: "Фигурка",
+        });
+      }, 1000);
+    });
   }
 
-  function addWish(e?: React.FormEvent) {
-    e?.preventDefault();
-    if (!title || price <= 0) return alert("Введите название и корректную цену");
-    if (isBlocked(category)) return alert("Данная категория заблокирована для отложенных желаний.");
+  async function parseFromLink() {
+    if (!link.trim()) return alert("Введите ссылку");
 
-    const now = new Date();
-    const coolingUntil = new Date(now.getTime() + coolDays * 24 * 60 * 60 * 1000);
+    const data = await mockParseLink(link);
+    setTitle(data.title);
+    setPrice(data.price);
+    setCategory(data.category);
+  }
+
+  // Logic
+
+  function isBlocked(cat: string) {
+    const c = cat.toLowerCase();
+    return blockedCategories.some((b) => c.includes(b.toLowerCase()));
+  }
+
+  function calculateCooling(price: number) {
+    const range = coolingRanges.find((r) => price >= r.from && price < r.to);
+    return range ? range.days : 7;
+  }
+
+  function calculateExtraSavingDelay(price: number) {
+    if (!considerSavings) return 0;
+    if (savings >= price) return 0;
+    if (perMonth <= 0) return 99999;
+    const diff = price - savings;
+    return Math.ceil(diff / perMonth) * 30;
+  }
+
+  function addWish() {
+    if (!title.trim() || price === "") return alert("Введите корректные данные о товаре");
+
+    if (isBlocked(category)) {
+      return alert("Категория товара входит в список запрещённых. Покупка запрещена.");
+    }
+
+    const priceNum = Number(price);
+    const baseCooling = calculateCooling(priceNum);
+    const savingDelay = calculateExtraSavingDelay(priceNum);
+    const recommended = baseCooling + savingDelay;
 
     const w: Wish = {
       id: uid(),
       title: title.trim(),
-      price: Number(price),
-      category: category.trim() || "прочее",
-      createdAt: now.toISOString(),
-      coolingUntil: coolingUntil.toISOString(),
-      savingsAtCreation: Number(savings),
-      monthlyAllocation: Number(monthlyAllocation) || 0,
+      price: priceNum,
+      category: category.trim() || "Прочее",
+      createdAt: new Date().toISOString(),
+      coolingDays: baseCooling,
+      recommendedCooling: recommended,
       stillWant: true,
+      fromLink: Boolean(link),
+      parsed: Boolean(link),
     };
 
     setWishes((s) => [w, ...s]);
+
     setTitle("");
-    setPrice(0);
+    setPrice("");
     setCategory("");
+    setLink("");
   }
 
   function removeWish(id: string) {
@@ -95,136 +147,179 @@ export default function Home() {
     setWishes((s) => s.map((w) => (w.id === id ? { ...w, stillWant: !w.stillWant } : w)));
   }
 
-  function monthsToAfford(w: Wish) {
-    const have = w.savingsAtCreation;
-    if (w.price <= have) return 0;
-    const alloc = w.monthlyAllocation || 0;
-    if (alloc <= 0) return Infinity;
-    return Math.ceil((w.price - have) / alloc);
-  }
-
-  function affordDate(w: Wish) {
-    const months = monthsToAfford(w);
-    if (months === 0) return new Date(w.createdAt).toLocaleDateString();
-    if (!isFinite(months)) return "Н/Д — нужно указать накопления/копить больше";
-    const d = new Date(w.createdAt);
-    d.setMonth(d.getMonth() + months);
-    return d.toLocaleDateString();
-  }
-
-  // При загрузке: опросить пользователя для желаний, у которых остыл период
-  useEffect(() => {
-    // Есть желание?
-    const now = new Date();
-    const cooled = wishes.filter((w) => new Date(w.coolingUntil) <= now && w.stillWant !== false);
-    if (cooled.length > 0) {
-      // Модал 
-      cooled.forEach((w) => {
-        const keep = confirm(`Период охлаждения для "${w.title}" завершился. Ты всё ещё хочешь это?`);
-        setWishes((s) => s.map((x) => (x.id === w.id ? { ...x, stillWant: keep } : x)));
-      });
-    }
-  }, []);
-
   const summary = useMemo(() => {
     const total = wishes.reduce((a, b) => a + b.price, 0);
     return { count: wishes.length, total };
   }, [wishes]);
 
+  // UI
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-yellow-50 font-sans dark:bg-yellow-900">
-      <main className="flex w-full max-w-4xl flex-col gap-8 rounded-lg bg-yellow-100 p-8 dark:bg-yellow-900">
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-yellow-100 p-6 dark:from-yellow-900 dark:to-yellow-950">
+      <main className="mx-auto max-w-5xl space-y-10 rounded-xl bg-white p-8 shadow-xl dark:bg-neutral-900">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Image src="/next.svg" alt="logo" width={80} height={16} className="dark:invert" />
-            <h1 className="text-2xl font-semibold text-yellow-900 dark:text-zinc-50">T-Желания — помощник против импульсивных покупок</h1>
+            <Image src="/tbank.svg" width={60} height={20} alt="Logo" className="dark:invert" />
+            <h1 className="text-3xl font-bold dark:text-neutral-100">T-Желания — помощник против импульсивных покупок</h1>
           </div>
-          <div className="text-right text-sm text-yellow-700 dark:text-zinc-400">
-            <div>Желаний: <strong>{summary.count}</strong></div>
-            <div>Сумма: <strong>{summary.total} ₽</strong></div>
+          <div className="rounded-lg bg-amber-100 px-4 py-2 text-sm text-amber-800 dark:bg-yellow-800 dark:text-yellow-100">
+            <div>Товаров: {summary.count}</div>
+            <div>На сумму: {summary.total} ₽</div>
           </div>
         </header>
 
-        <section className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <form className="flex flex-col gap-3 rounded border-yellow-300 p-4" onSubmit={addWish}>
-            <label className="text-sm font-medium">Что хочется</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className="rounded border px-3 py-2" placeholder="Название (напр. Наушники)" />
 
-            <label className="text-sm font-medium">Категория</label>
-            <input value={category} onChange={(e) => setCategory(e.target.value)} className="rounded border px-3 py-2" placeholder="Категория (напр. Техника)" />
 
-            <label className="text-sm font-medium">Цена (₽)</label>
-            <input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} className="rounded border px-3 py-2" />
+        <section className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="space-y-4 rounded-xl border bg-amber-50 p-6 shadow dark:bg-neutral-800">
+            <h2 className="text-xl font-semibold dark:text-neutral-100">Добавить товар</h2>
 
-            <label className="text-sm font-medium">Период охлаждения (дней)</label>
-            <input type="number" min={0} value={coolDays} onChange={(e) => setCoolDays(Number(e.target.value))} className="rounded border px-3 py-2" />
-
-            <div className="mt-2 flex gap-2">
-              <button type="submit" className="rounded bg-foreground px-4 py-2 text-white">Отложить желание</button>
-              <button type="button" onClick={() => { setTitle(""); setPrice(0); setCategory(""); }} className="rounded border px-4 py-2">Очистить</button>
+            <div>
+              <label className="text-sm font-medium">Ссылка на товар</label>
+              <input
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                placeholder="https://..."
+                className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-neutral-700"
+              />
+              <button
+                onClick={parseFromLink}
+                className="mt-2 rounded-lg bg-amber-600 px-4 py-2 text-white shadow hover:bg-amber-700 dark:bg-yellow-700"
+              >
+                Сканировать
+              </button>
             </div>
 
-            <p className="mt-2 text-xs text-yellow-600">Заблокированные категории: {BLOCKED_CATEGORIES.join(", ")}. Если категория совпадает — добавление не получится.</p>
-          </form>
+            <hr className="border-amber-300 dark:border-yellow-700" />
 
-          <div className="rounded border p-4">
-            <h3 className="mb-2 text-lg font-medium">Финансы (для расчёта доступности)</h3>
-            <label className="text-sm">Накопления сейчас (₽)</label>
-            <input type="number" value={savings} onChange={(e) => setSavings(Number(e.target.value))} className="mt-1 w-full rounded border px-3 py-2" />
+            <div>
+              <label className="text-sm font-medium">Название</label>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-neutral-700"
+              />
+            </div>
 
-            <label className="mt-2 text-sm">Сколько можешь откладывать в месяц (₽)</label>
-            <input type="number" value={monthlyAllocation} onChange={(e) => setMonthlyAllocation(Number(e.target.value))} className="mt-1 w-full rounded border px-3 py-2" />
+            <div>
+              <label className="text-sm font-medium">Цена (₽)</label>
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(Number(e.target.value))}
+                className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-neutral-700"
+              />
+            </div>
 
-            <div className="mt-4 text-sm text-yellow-700">
-              <p>Совет: увеличив ежемесячные отчисления, вы сможете позволить себе покупку быстрее.</p>
+            <div>
+              <label className="text-sm font-medium">Категория</label>
+              <input
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-neutral-700"
+              />
+            </div>
+
+            <button
+              onClick={addWish}
+              className="mt-4 w-full rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white shadow hover:bg-amber-700 dark:bg-yellow-700"
+            >
+              Добавить в список
+            </button>
+          </div>
+
+          <div className="space-y-4 rounded-xl border bg-white p-6 shadow dark:bg-neutral-800">
+            <h3 className="text-xl font-semibold dark:text-neutral-100">Финансовые параметры</h3>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={considerSavings}
+                onChange={(e) => setConsiderSavings(e.target.checked)}
+              />
+              <span className="text-sm dark:text-neutral-200">Учитывать накопления</span>
+            </div>
+
+            {considerSavings && (
+              <>
+                <div>
+                  <label className="text-sm font-medium">Текущие накопления (₽)</label>
+                  <input
+                    type="number"
+                    value={savings}
+                    onChange={(e) => setSavings(Number(e.target.value))}
+                    className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-neutral-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Откладываю в месяц (₽)</label>
+                  <input
+                    type="number"
+                    value={perMonth}
+                    onChange={(e) => setPerMonth(Number(e.target.value))}
+                    className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-neutral-700"
+                  />
+                </div>
+              </>
+            )}
+
+            <div>
+              <label className="text-sm font-medium">Запрещённые категории</label>
+              <textarea
+                value={blockedCategories.join(", ")}
+                onChange={(e) => setBlockedCategories(e.target.value.split(","))}
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:bg-neutral-700"
+              />
             </div>
           </div>
         </section>
 
-        <section className="rounded border p-4">
-          <h3 className="mb-4 text-lg font-medium">Список желаемого</h3>
-          {wishes.length === 0 && <div className="text-yellow-600">Пока нет отложенных желаний — добавьте первое!</div>}
+        <section className="rounded-xl border bg-white p-6 shadow dark:bg-neutral-800">
+          <h3 className="mb-5 text-2xl font-semibold dark:text-neutral-100">Список желаний</h3>
 
-          <ul className="flex flex-col gap-3">
-            {wishes.map((w) => {
-              const cooled = new Date(w.coolingUntil) <= new Date();
-              const months = monthsToAfford(w);
-              return (
-                <li key={w.id} className="flex w-full items-center justify-between gap-4 rounded border p-3">
-                  <div className="flex flex-col">
-                    <div className="flex items-baseline gap-3">
-                      <strong className="text-base">{w.title}</strong>
-                      <span className="text-xs text-yellow-600">{w.category}</span>
-                    </div>
-                    <div className="text-sm text-yellow-700">Цена: {w.price} ₽ • Накоплено: {w.savingsAtCreation} ₽</div>
-                    <div className="text-xs text-yellow-600">Период охлаждения до: {new Date(w.coolingUntil).toLocaleDateString()}</div>
-                    <div className="mt-1 text-sm">
-                      {w.price <= w.savingsAtCreation ? (
-                        <span className="text-green-600">Уже можно купить</span>
-                      ) : !isFinite(months) ? (
-                        <span className="text-red-600">Нельзя посчитать — укажите ежемесячные отчисления</span>
-                      ) : (
-                        <span>Примерно через <strong>{months}</strong> мес. (≈ {affordDate(w)})</span>
-                      )}
-                    </div>
-                  </div>
+          {wishes.length === 0 && (
+            <div className="text-amber-700 dark:text-yellow-300">Пока пусто — добавьте первый товар!</div>
+          )}
 
-                  <div className="flex flex-col items-end gap-2">
-                    <div className="text-sm">
-                      {cooled ? <span className="text-zinc-700">Остывшее</span> : <span className="text-zinc-400">В охлаждении</span>}
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => toggleStillWant(w.id)} className="rounded border px-3 py-1 text-sm">{w.stillWant ? "Я всё ещё хочу" : "Уже не хочу"}</button>
-                      <button onClick={() => removeWish(w.id)} className="rounded bg-red-600 px-3 py-1 text-sm text-white">Удалить</button>
-                    </div>
+          <ul className="space-y-4">
+            {wishes.map((w) => (
+              <li
+                key={w.id}
+                className="flex flex-col justify-between gap-4 rounded-xl border bg-amber-50 p-4 shadow dark:bg-neutral-700 md:flex-row"
+              >
+                <div className="space-y-1">
+                  <strong className="text-lg dark:text-neutral-100">{w.title}</strong>
+                  <div className="text-sm dark:text-neutral-300">Цена: {w.price} ₽</div>
+                  <div className="text-sm dark:text-neutral-300">Категория: {w.category}</div>
+                  <div className="text-sm dark:text-neutral-300">
+                    Базовое охлаждение: {w.coolingDays} дней
                   </div>
-                </li>
-              );
-            })}
+                  <div className="text-sm dark:text-neutral-200 font-medium">
+                    Рекомендуется ждать: {w.recommendedCooling} дней
+                  </div>
+                </div>
+
+                <div className="flex items-end gap-2 md:flex-col md:items-end">
+                  <button
+                    onClick={() => toggleStillWant(w.id)}
+                    className="rounded-lg border px-3 py-1 text-sm shadow dark:bg-neutral-800 dark:text-neutral-100"
+                  >
+                    {w.stillWant ? "Всё ещё хочу" : "Не хочу"}
+                  </button>
+
+                  <button
+                    onClick={() => removeWish(w.id)}
+                    className="rounded-lg bg-red-600 px-3 py-1 text-sm font-medium text-white shadow hover:bg-red-700"
+                  >
+                    Удалить
+                  </button>
+                </div>
+              </li>
+            ))}
           </ul>
         </section>
       </main>
     </div>
-  
   );
 }
