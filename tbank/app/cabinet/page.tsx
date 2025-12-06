@@ -24,32 +24,24 @@ type Profile = {
 
 const API = "http://localhost:8080/api";
 
-// === Функция расчёта комфортного периода ===
 function calcComfortPeriod(price: number, total: number, monthly: number) {
   const comfort = 0.5;
-
   if (monthly <= 0 && total < price * comfort) return null;
-
   const numerator = price - (1 - comfort) * total;
   const denominator = monthly * comfort;
-
   if (numerator <= 0) return 0;
-
   if (denominator <= 0) return null;
-
   const months = Math.ceil(numerator / denominator);
   return months < 0 ? 0 : months;
 }
 
 export default function CabinetPage() {
   const [nick, setNick] = useState<string>("");
-  const [editingNick, setEditingNick] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [wishes, setWishes] = useState<Wish[]>([]);
   const [history, setHistory] = useState<Wish[]>([]);
   const [blockedText, setBlockedText] = useState("");
   const [loading, setLoading] = useState(false);
-
   const [salary, setSalary] = useState<number | "">("");
   const [totalSavingsProfile, setTotalSavingsProfile] = useState<number | "">("");
   const [monthlySavingProfile, setMonthlySavingProfile] = useState<number | "">("");
@@ -75,7 +67,6 @@ export default function CabinetPage() {
   async function loadProfileAndWishes() {
     setLoading(true);
     try {
-      // profile
       const pRes = await fetch(`${API}/user/${nick}`);
       const pjson = await pRes.json();
       setProfile({
@@ -90,16 +81,14 @@ export default function CabinetPage() {
       setMonthlySavingProfile(pjson.monthlySavingProfile || "");
       setBlockedText((pjson.blockedCategories || []).join(", "));
 
-      // active
       const wRes = await fetch(`${API}/wishes/${nick}?status=active`);
       const wjson: Wish[] = await wRes.json();
       setWishes(wjson || []);
 
-      // history (completed + canceled)
-      const hRes = await fetch(`${API}/wishes/${nick}?status=completed`);
-      const h1: Wish[] = await hRes.json();
-      const cRes = await fetch(`${API}/wishes/${nick}?status=canceled`);
-      const h2: Wish[] = await cRes.json();
+      const hRes1 = await fetch(`${API}/wishes/${nick}?status=completed`);
+      const hRes2 = await fetch(`${API}/wishes/${nick}?status=canceled`);
+      const h1: Wish[] = await hRes1.json();
+      const h2: Wish[] = await hRes2.json();
       setHistory([...(h1 || []), ...(h2 || [])]);
     } catch (err) {
       console.error("Ошибка загрузки кабинета:", err);
@@ -170,97 +159,167 @@ export default function CabinetPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-yellow-100 p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-4 text-yellow-300">Личный кабинет</h1>
+    <div className="min-h-screen bg-gray-900 text-yellow-100 p-6 font-sans transition-colors duration-300 hover:bg-gray-800">
+      <div className="max-w-5xl mx-auto">
+        <header className="flex items-center justify-center mb-8">
+          <div className="flex items-center space-x-4">
+            <svg
+              className="w-12 h-12 text-yellow-300 animate-bounce"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 2C8 2 4 6 4 10c0 4 4 8 8 8s8-4 8-8c0-4-4-8-8-8zm0 14c-2.21 0-4-1.79-4-4h2c0 1.1.9 2 2 2s2-.9 2-2h2c0 2.21-1.79 4-4 4z" />
+            </svg>
+            <h1 className="text-4xl font-extrabold text-yellow-300 flex items-center space-x-2 transition-transform hover:scale-105">
+              <span>Личный кабинет</span>
+            </h1>
+          </div>
+        </header>
 
         {!nick ? (
-          <div className="mb-6">
-            <p className="mb-2">Войдите через ник (без паролей):</p>
-            <input value={editingNick} onChange={(e) => setEditingNick(e.target.value)} className="p-2 rounded bg-gray-800 text-yellow-100 mr-2"/>
-            <button onClick={() => saveNickToLocal(editingNick.trim())} className="px-3 py-1 bg-yellow-500 rounded text-black">Войти</button>
+          <div className="mb-6 bg-gray-800 p-4 rounded-lg shadow-lg transition-transform hover:shadow-xl hover:-translate-y-2 duration-300 flex items-center justify-center gap-3">
+            <svg
+              className="w-6 h-6 text-yellow-400"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+            </svg>
+            <input
+              className="p-2 bg-gray-700 rounded text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              placeholder="Введите ник"
+              value={nick}
+              onChange={(e) => setNick(e.target.value)}
+            />
+            <button
+              className="px-4 py-2 bg-yellow-500 text-black rounded font-semibold hover:bg-yellow-600 transition"
+              onClick={() => saveNickToLocal(nick.trim())}
+            >
+              Войти
+            </button>
           </div>
         ) : (
           <>
-            <div className="mb-4">
-              <p>Вы вошли как: <strong className="text-yellow-300">{nick}</strong></p>
-              <button onClick={() => { localStorage.removeItem("nick"); setNick(""); setProfile(null); }} className="mt-2 px-3 py-1 bg-gray-700 rounded">Выйти</button>
+            <div className="mb-4 flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <svg
+                  className="w-8 h-8 text-yellow-300 animate-bounce"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 2C8 2 4 6 4 10c0 4 4 8 8 8s8-4 8-8c0-4-4-8-8-8zm0 14c-2.21 0-4-1.79-4-4h2c0 1.1.9 2 2 2s2-.9 2-2h2c0 2.21-1.79 4-4 4z" />
+                </svg>
+                <span className="text-xl font-semibold text-yellow-300">{nick}</span>
+              </div>
               <button
-                onClick={async () => {
-                await fetch(`http://localhost:8080/api/notify/testmeowmeow`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    title: "Комфортная покупка",
-                    message: "Вы можете купить товар за 100 000₽ и останется финансовая подушка.",
-                    type: "comfort_ready"
-                  })
-                });
-                  alert("Отправлено!");
+                onClick={() => {
+                  localStorage.removeItem("nick");
+                  setNick("");
+                  setProfile(null);
                 }}
-              className="mt-2 px-3 py-1 bg-gray-700 rounded">
-                Тест Notify
+                className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 transition"
+              >
+                Выйти
               </button>
             </div>
 
-            
-
-            {/* === ФИНАНСОВЫЙ ПРОФИЛЬ === */}
-            <section className="mb-6 bg-gray-800 p-4 rounded">
-              <h2 className="text-xl font-semibold mb-2">О себе (финансовый профиль)</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-
-                <label className="block">
-                  Зарплата
-                  <input type="number" value={salary as any} onChange={(e) => {
-                    const v = e.target.value;
-                    if (v.length > 15 || v.startsWith('-')) return;
-                    setSalary(v === "" ? "" : Number(v));
-                  }}
-                  className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
-                </label>
-
-                <label className="block">
-                  Текущие накопления
-                  <input type="number" value={totalSavingsProfile as any} onChange={(e) => {
-                    const v = e.target.value;
-                    if (v.length > 17 || v.startsWith('-')) return;
-                    setTotalSavingsProfile(v === "" ? "" : Number(v));
-                  }}
-                  className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
-                </label>
-
-                <label className="block">
-                  Откладываю в месяц
-                  <input type="number" value={monthlySavingProfile as any} onChange={(e) => {
-                    const v = e.target.value;
-                    if (v.length > 19 || v.startsWith('-')) return;
-                    setMonthlySavingProfile(v === "" ? "" : Number(v));
-                  }}
-                  className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
-                </label>
-
-                <label className="block col-span-1 md:col-span-2">
-                  Запрещённые категории (через запятую)
-                  <input type="text" value={blockedText} onChange={(e) => setBlockedText(e.target.value)}
-                  className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"
-                  maxLength={40}/>
-                </label>
-
+            <section className="mb-6 bg-gray-800 p-4 rounded-lg shadow-lg transition-transform hover:shadow-xl hover:-translate-y-2 duration-300">
+              <h2 className="flex items-center mb-4 space-x-3 text-xl font-semibold text-yellow-300">
+                <svg
+                  className="w-6 h-6 text-yellow-400"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                </svg>
+                <span>Профиль</span>
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block mb-1 font-semibold">Зарплата</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 rounded bg-gray-700 border border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400 text-yellow-100"
+                    value={salary}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v.length > 15 || v.startsWith("-")) return;
+                      setSalary(v === "" ? "" : Number(v));
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 font-semibold">Текущие накопления</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 rounded bg-gray-700 border border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400 text-yellow-100"
+                    value={totalSavingsProfile}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v.length > 17 || v.startsWith("-")) return;
+                      setTotalSavingsProfile(v === "" ? "" : Number(v));
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 font-semibold">Откладываю в месяц</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 rounded bg-gray-700 border border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400 text-yellow-100"
+                    value={monthlySavingProfile}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v.length > 19 || v.startsWith("-")) return;
+                      setMonthlySavingProfile(v === "" ? "" : Number(v));
+                    }}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block mb-1 font-semibold">Запрещённые категории</label>
+                  <input
+                    type="text"
+                    className="w-full p-2 rounded bg-gray-700 border border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400 text-yellow-100"
+                    placeholder="через запятую"
+                    maxLength={40}
+                    value={blockedText}
+                    onChange={(e) => setBlockedText(e.target.value)}
+                  />
+                </div>
               </div>
-
-              <div className="mt-3 flex gap-2">
-                <button onClick={handleSaveProfile} className="px-4 py-2 bg-yellow-500 rounded text-black font-semibold">Сохранить профиль</button>
-                <button onClick={loadProfileAndWishes} className="px-4 py-2 bg-gray-700 rounded">Обновить</button>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSaveProfile}
+                  className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded font-semibold transition"
+                >
+                  Сохранить профиль
+                </button>
+                <button
+                  onClick={loadProfileAndWishes}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded transition"
+                >
+                  Обновить
+                </button>
               </div>
             </section>
 
-            {/* === АКТИВНЫЕ ЖЕЛАНИЯ === */}
-            <section className="mb-6 bg-gray-800 p-4 rounded">
-              <h2 className="text-xl font-semibold mb-2">Активные желания</h2>
-              {loading ? <p>Загрузка...</p> : wishes.length === 0 ? <p>Нет активных желаний</p> : (
-                <div className="space-y-3">
-                  {wishes.map(w => {
+            <section className="mb-6 bg-gray-800 p-4 rounded-lg shadow-lg transition-transform hover:shadow-xl hover:-translate-y-2 duration-300">
+              <h2 className="flex items-center mb-4 space-x-3 text-xl font-semibold text-yellow-300">
+                <svg
+                  className="w-6 h-6 text-yellow-400"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 4V1L8 5l4 4V7c3.31 0 6 2.69 6 6 0 2.21-1.79 4-4 4s-4-1.79-4-4h-2c0 3.31 2.69 6 6 6 3.31 0 6-2.69 6-6s-2.69-6-6-6z" />
+                </svg>
+                <span>Активные желания</span>
+              </h2>
+              {loading ? (
+                <p className="text-yellow-300 animate-pulse">Загрузка...</p>
+              ) : wishes.length === 0 ? (
+                <p className="text-yellow-300 opacity-70">Нет активных желаний</p>
+              ) : (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-400 scrollbar-track-gray-700">
+                  {wishes.map((w) => {
                     const comfortMonths = calcComfortPeriod(
                       w.price,
                       profile?.totalSavingsProfile || 0,
@@ -268,29 +327,47 @@ export default function CabinetPage() {
                     );
 
                     return (
-                      <div key={w.id} className="bg-gray-900 p-3 rounded border border-yellow-600">
-                        <div className="flex justify-between items-start">
+                      <div
+                        key={w.id}
+                        className="bg-gray-900 p-4 rounded border border-yellow-600 shadow hover:shadow-xl transition-all duration-300 animate-fadeInUp"
+                      >
+                        <div className="flex justify-between items-start flex-col md:flex-row gap-2 md:gap-4">
                           <div>
-                            <div className="font-semibold">{w.title}</div>
-                            <div className="text-sm">Цена: {w.price} ₽ · Категория: {w.category}</div>
-                            <div className="text-xs text-yellow-300">
-                              Рекомендовано ждать: {w.recommendedCooling} дн
+                            <div className="font-semibold text-lg">{w.title}</div>
+                            <div className="text-sm mb-1">
+                              Цена: {w.price} ₽ · Категория: {w.category}
                             </div>
-
-                            <div className="text-xs text-yellow-300 mt-1">
+                            <div className="text-xs text-yellow-300 mb-1">
+                              Рекомендуют ждать: {w.recommendedCooling} дн
+                            </div>
+                            <div className="text-xs text-yellow-300">
                               Комфортная покупка через:{" "}
                               {comfortMonths === null
                                 ? "недостижимо"
                                 : comfortMonths === 0
-                                  ? "уже можно"
-                                  : `${comfortMonths} мес.`}
+                                ? "уже можно"
+                                : `${comfortMonths} мес.`}
                             </div>
                           </div>
-
-                          <div className="flex flex-col gap-2">
-                            <button onClick={() => markCompleted(w.id)} className="px-2 py-1 bg-green-600 rounded text-black">Выполнено</button>
-                            <button onClick={() => markCanceled(w.id)} className="px-2 py-1 bg-red-600 rounded text-white">Отменить</button>
-                            <button onClick={() => removeWish(w.id)} className="px-2 py-1 bg-gray-700 rounded text-yellow-100">Удалить</button>
+                          <div className="flex flex-col gap-2 mt-2 md:mt-0 md:self-start">
+                            <button
+                              onClick={() => markCompleted(w.id)}
+                              className="px-3 py-1 bg-green-600 rounded hover:bg-green-500 transition"
+                            >
+                              Выполнено
+                            </button>
+                            <button
+                              onClick={() => markCanceled(w.id)}
+                              className="px-3 py-1 bg-red-600 rounded hover:bg-red-500 transition"
+                            >
+                              Отменить
+                            </button>
+                            <button
+                              onClick={() => removeWish(w.id)}
+                              className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 transition"
+                            >
+                              Удалить
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -300,22 +377,36 @@ export default function CabinetPage() {
               )}
             </section>
 
-            {/* === ИСТОРИЯ === */}
-            <section className="mb-6 bg-gray-800 p-4 rounded">
-              <h2 className="text-xl font-semibold mb-2">История (выполненные / отменённые)</h2>
-              {history.length === 0 ? <p>Еще нет истории</p> : (
-                <div className="space-y-3">
-                  {history.map(h => (
-                    <div key={h.id} className="bg-gray-900 p-3 rounded border border-yellow-600">
-                      <div className="flex justify-between items-start">
+            <section className="mb-6 bg-gray-800 p-4 rounded-lg shadow-lg transition-transform hover:shadow-xl hover:-translate-y-2 duration-300">
+              <h2 className="flex items-center mb-4 space-x-3 text-xl font-semibold text-yellow-300">
+                <svg
+                  className="w-6 h-6 text-yellow-400"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-3 12H8v-2h8v2z" />
+                </svg>
+                <span>История</span>
+              </h2>
+              {history.length === 0 ? (
+                <p className="text-yellow-300 opacity-70">Еще нет истории</p>
+              ) : (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-400 scrollbar-track-gray-700">
+                  {history.map((h) => (
+                    <div
+                      key={h.id}
+                      className="bg-gray-900 p-3 rounded border border-yellow-600 shadow hover:shadow-xl transition-all duration-300 animate-fadeInUp"
+                    >
+                      <div className="flex justify-between items-start flex-col md:flex-row gap-2 md:gap-4">
                         <div>
                           <div className="font-semibold">{h.title}</div>
-                          <div className="text-sm">Цена: {h.price} ₽ · Категория: {h.category}</div>
+                          <div className="text-sm mb-1">
+                            Цена: {h.price} ₽ · Категория: {h.category}
+                          </div>
                           <div className="text-xs text-yellow-300">Статус: {h.status}</div>
                         </div>
-
-                        <div className="flex gap-2">
-                          <button onClick={() => removeWish(h.id)} className="px-2 py-1 bg-gray-700 rounded">Удалить</button>
+                        <div className="flex gap-2 mt-2 md:mt-0">
+                          <button className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 transition">Удалить</button>
                         </div>
                       </div>
                     </div>
