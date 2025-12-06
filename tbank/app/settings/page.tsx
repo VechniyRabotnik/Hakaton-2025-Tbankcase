@@ -127,21 +127,33 @@ export default function SettingsPage() {
                 type="number"
                 placeholder="От (рублей)"
                 value={r.min as any}
-                onChange={(e) => handleRangeChange(i, "min", e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v.length > 15) return;
+                if (v.startsWith('-')) return;
+                  handleRangeChange(i, "min", e.target.value)}}
                 className="p-2 rounded bg-gray-900 text-yellow-100 border border-yellow-600"
               />
               <input
                 type="number"
                 placeholder="До (рублей)"
                 value={r.max as any}
-                onChange={(e) => handleRangeChange(i, "max", e.target.value)}
+                onChange={(e) =>  {
+                const v = e.target.value;
+                if (v.length > 17) return;
+                if (v.startsWith('-')) return;
+                handleRangeChange(i, "max", e.target.value)}}
                 className="p-2 rounded bg-gray-900 text-yellow-100 border border-yellow-600"
               />
               <input
                 type="number"
                 placeholder="Период (дней)"
                 value={r.period as any}
-                onChange={(e) => handleRangeChange(i, "period", e.target.value)}
+                onChange={(e) => {
+                const v = e.target.value;
+                if (v.length > 5) return;
+                if (v.startsWith('-')) return;
+                  handleRangeChange(i, "period", e.target.value)}}
                 className="p-2 rounded bg-gray-900 text-yellow-100 border border-yellow-600"
               />
               <button onClick={() => removeRange(i)} className="px-2 py-1 bg-red-600 rounded text-white">Удалить</button>
@@ -161,7 +173,11 @@ export default function SettingsPage() {
             <input
               type="text"
               value={notificationFrequency}
-              onChange={(e) => setNotificationFrequency(e.target.value)}
+              onChange={(e) =>  {
+                const v = e.target.value;
+                if (v.length > 8) return;
+                if (v.startsWith('-')) return;
+                setNotificationFrequency(e.target.value)}}
               placeholder="например, каждые 30 минут"
               className="w-full p-2 rounded bg-gray-900 text-yellow-100 border border-yellow-600 mt-1"
             />
@@ -175,6 +191,7 @@ export default function SettingsPage() {
               onChange={(e) => setExcludedProducts(e.target.value)}
               placeholder="товар1, товар2"
               className="w-full p-2 rounded bg-gray-900 text-yellow-100 border border-yellow-600 mt-1"
+              maxLength={40}
             />
           </label>
 
@@ -197,7 +214,11 @@ export default function SettingsPage() {
             <input
               type="number"
               value={totalSpent as any}
-              onChange={(e) => setTotalSpent(e.target.value === "" ? "" : Number(e.target.value))}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v.length > 15) return;
+                if (v.startsWith('-')) return;
+                setTotalSpent(e.target.value === "" ? "" : Number(e.target.value))}}
               className="w-full p-2 rounded bg-gray-900 text-yellow-100 border border-yellow-600 mt-1"
             />
           </label>
@@ -207,7 +228,11 @@ export default function SettingsPage() {
             <input
               type="number"
               value={monthlySaving as any}
-              onChange={(e) => setMonthlySaving(e.target.value === "" ? "" : Number(e.target.value))}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v.length > 17) return;
+                if (v.startsWith('-')) return;
+                setMonthlySaving(e.target.value === "" ? "" : Number(e.target.value))}}
               className="w-full p-2 rounded bg-gray-900 text-yellow-100 border border-yellow-600 mt-1"
             />
           </label>

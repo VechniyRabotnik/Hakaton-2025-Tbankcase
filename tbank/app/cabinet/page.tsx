@@ -12,7 +12,7 @@ type Wish = {
   stillWant: boolean;
   status: string;
   createdAt?: string;
-  updatedAt?: string;
+  //updatedAt?: string;
 };
 
 type Profile = {
@@ -177,22 +177,39 @@ export default function CabinetPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="block">
                   Зарплата
-                  <input type="number" value={salary as any} onChange={(e) => setSalary(e.target.value === "" ? "" : Number(e.target.value))} className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
+                  <input type="number" value={salary as any} onChange={(e) => {
+                  const v = e.target.value;
+                  if (v.length > 15) return;
+                  if (v.startsWith('-')) return;
+                    setSalary(e.target.value === "" ? "" : Number(e.target.value))}}
+                     className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
                 </label>
 
                 <label className="block">
                   Текущие накопления
-                  <input type="number" value={totalSavingsProfile as any} onChange={(e) => setTotalSavingsProfile(e.target.value === "" ? "" : Number(e.target.value))} className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
+                  <input type="number" value={totalSavingsProfile as any} onChange={(e) => {
+                  const v = e.target.value;
+                  if (v.length > 17) return;
+                  if (v.startsWith('-')) return;
+                    setTotalSavingsProfile(e.target.value === "" ? "" : Number(e.target.value))}} 
+                    className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
                 </label>
 
                 <label className="block">
                   Откладываю в месяц
-                  <input type="number" value={monthlySavingProfile as any} onChange={(e) => setMonthlySavingProfile(e.target.value === "" ? "" : Number(e.target.value))} className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
+                  <input type="number" value={monthlySavingProfile as any} onChange={(e) => {
+                    const v = e.target.value;
+                  if (v.length > 19) return;
+                  if (v.startsWith('-')) return;
+                    setMonthlySavingProfile(e.target.value === "" ? "" : Number(e.target.value))}} 
+                    className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
                 </label>
 
                 <label className="block col-span-1 md:col-span-2">
                   Запрещённые категории (через запятую)
-                  <input type="text" value={blockedText} onChange={(e) => setBlockedText(e.target.value)} className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
+                  <input type="text" value={blockedText} onChange={(e) => setBlockedText(e.target.value)} 
+                  className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"
+                  maxLength={40}/>
                 </label>
               </div>
 
@@ -236,7 +253,7 @@ export default function CabinetPage() {
                         <div>
                           <div className="font-semibold">{h.title}</div>
                           <div className="text-sm">Цена: {h.price} ₽ · Категория: {h.category}</div>
-                          <div className="text-xs text-yellow-300">Статус: {h.status} · Обновлено: {h.updatedAt ? new Date(h.updatedAt).toLocaleString() : ""}</div>
+                          <div className="text-xs text-yellow-300">Статус: {h.status} </div>
                         </div>
                         <div className="flex gap-2">
                           <button onClick={() => removeWish(h.id)} className="px-2 py-1 bg-gray-700 rounded">Удалить</button>

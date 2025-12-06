@@ -12,6 +12,7 @@ type Wish = {
   recommendedCooling: number;
   stillWant: boolean;
   createdAt?: string;
+  status: string;
 };
 
 type CooldownRange = {
@@ -39,6 +40,7 @@ export default function HomePage() {
   const [totalSpent, setTotalSpent] = useState<number | "">("");
   const [monthlySaving, setMonthlySaving] = useState<number | "">("");
   const [wishes, setWishes] = useState<Wish[]>([]);
+  const [status, setStatus] = useState("");
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -181,6 +183,7 @@ export default function HomePage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="p-3 rounded border border-yellow-600 bg-gray-900 text-yellow-100"
+              maxLength={25}
             />
             <input
               placeholder="Цена"
@@ -188,6 +191,8 @@ export default function HomePage() {
               value={price}
               onChange={(e) => {
                 const v = e.target.value;
+                if (v.length > 15) return;
+                if (v.startsWith('-')) return;
                 setPrice(v === "" ? "" : Number(v));
               }}
               className="p-3 rounded border border-yellow-600 bg-gray-900 text-yellow-100"
@@ -197,6 +202,7 @@ export default function HomePage() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="p-3 rounded border border-yellow-600 bg-gray-900 text-yellow-100"
+              maxLength={25}
             />
 
             <input
@@ -205,6 +211,8 @@ export default function HomePage() {
               value={totalSpent}
               onChange={(e) => {
                 const v = e.target.value;
+                if (v.length > 15) return;
+                if (v.startsWith('-')) return;
                 setTotalSpent(v === "" ? "" : Number(v));
               }}
               className="p-3 rounded border border-yellow-600 bg-gray-900 text-yellow-100"
@@ -215,6 +223,8 @@ export default function HomePage() {
               value={monthlySaving}
               onChange={(e) => {
                 const v = e.target.value;
+                if (v.length > 15) return;
+                if (v.startsWith('-')) return;
                 setMonthlySaving(v === "" ? "" : Number(v));
               }}
               className="p-3 rounded border border-yellow-600 bg-gray-900 text-yellow-100"
@@ -256,17 +266,11 @@ export default function HomePage() {
 
                   <p className="mt-2">Цена: {w.price} ₽</p>
                   <p>Категория: {w.category}</p>
-                  <p>Базовое охлаждение: {w.coolingDays} дн {getCooldownHint(w.price) && <span className="text-sm text-yellow-300">· {getCooldownHint(w.price)}</span>}</p>
+                  <p>Базовое охлаждение: От {w.coolingDays} до {getCooldownHint(w.price)  && <span className="text-sm text-yellow-300">· {getCooldownHint(w.price)}</span>} дней</p>
                   <p className="font-medium">Рекомендуется ждать: {w.recommendedCooling} дн</p>
-                  <p>Статус: {w.stillWant ? "Хочу" : "Не хочу"}</p>
+                  <p>Статус: {w.status}</p>
 
                   <div className="mt-3 flex gap-2">
-                    <button
-                      onClick={() => toggleStillWant(w.id)}
-                      className="px-3 py-1 rounded border border-yellow-300 bg-black text-yellow-300 hover:bg-yellow-300 hover:text-black"
-                    >
-                      Переключить
-                    </button>
                     <button
                       onClick={() => removeWish(w.id)}
                       className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white"
