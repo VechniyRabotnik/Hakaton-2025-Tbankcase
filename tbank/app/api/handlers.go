@@ -106,18 +106,6 @@ func AddWishHandler(storage *Storage) http.HandlerFunc {
 	}
 }
 
-func ToggleWishHandle(storage *Storage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		userId := vars["userId"]
-		wishId := vars["wishId"]
-		log.Printf("[Handler] PUT toggle wish %s for user %s\n", wishId, userId)
-
-		storage.ToggleStillWant(userId, wishId)
-		w.WriteHeader(http.StatusOK)
-	}
-}
-
 // ToggleWishHandler создает обработчик для переключения статуса желания
 // @Summary Переключить статус желания
 // @Description Инвертирует поле StillWant желания по его ID
