@@ -12,7 +12,6 @@ type Wish = {
   stillWant: boolean;
   status: string;
   createdAt?: string;
-  //updatedAt?: string;
 };
 
 type Profile = {
@@ -24,6 +23,23 @@ type Profile = {
 };
 
 const API = "http://localhost:8080/api";
+
+// === Функция расчёта комфортного периода ===
+function calcComfortPeriod(price: number, total: number, monthly: number) {
+  const comfort = 0.5;
+
+  if (monthly <= 0 && total < price * comfort) return null;
+
+  const numerator = price - (1 - comfort) * total;
+  const denominator = monthly * comfort;
+
+  if (numerator <= 0) return 0;
+
+  if (denominator <= 0) return null;
+
+  const months = Math.ceil(numerator / denominator);
+  return months < 0 ? 0 : months;
+}
 
 export default function CabinetPage() {
   const [nick, setNick] = useState<string>("");
@@ -38,14 +54,13 @@ export default function CabinetPage() {
   const [totalSavingsProfile, setTotalSavingsProfile] = useState<number | "">("");
   const [monthlySavingProfile, setMonthlySavingProfile] = useState<number | "">("");
 
- useEffect(() => {
+  useEffect(() => {
     const storedNick = localStorage.getItem("nick");
     if (storedNick) {
       setNick(storedNick);
     }
   }, []);
 
-  
   useEffect(() => {
     if (nick) {
       loadProfileAndWishes();
@@ -80,7 +95,7 @@ export default function CabinetPage() {
       const wjson: Wish[] = await wRes.json();
       setWishes(wjson || []);
 
-      // history
+      // history (completed + canceled)
       const hRes = await fetch(`${API}/wishes/${nick}?status=completed`);
       const h1: Wish[] = await hRes.json();
       const cRes = await fetch(`${API}/wishes/${nick}?status=canceled`);
@@ -170,47 +185,68 @@ export default function CabinetPage() {
             <div className="mb-4">
               <p>Вы вошли как: <strong className="text-yellow-300">{nick}</strong></p>
               <button onClick={() => { localStorage.removeItem("nick"); setNick(""); setProfile(null); }} className="mt-2 px-3 py-1 bg-gray-700 rounded">Выйти</button>
+              <button
+                onClick={async () => {
+                await fetch(`http://localhost:8080/api/notify/testmeowmeow`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    title: "Комфортная покупка",
+                    message: "Вы можете купить товар за 100 000₽ и останется финансовая подушка.",
+                    type: "comfort_ready"
+                  })
+                });
+                  alert("Отправлено!");
+                }}
+              className="mt-2 px-3 py-1 bg-gray-700 rounded">
+                Тест Notify
+              </button>
             </div>
 
+            
+
+            {/* === ФИНАНСОВЫЙ ПРОФИЛЬ === */}
             <section className="mb-6 bg-gray-800 p-4 rounded">
               <h2 className="text-xl font-semibold mb-2">О себе (финансовый профиль)</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
                 <label className="block">
                   Зарплата
                   <input type="number" value={salary as any} onChange={(e) => {
-                  const v = e.target.value;
-                  if (v.length > 15) return;
-                  if (v.startsWith('-')) return;
-                    setSalary(e.target.value === "" ? "" : Number(e.target.value))}}
-                     className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
+                    const v = e.target.value;
+                    if (v.length > 15 || v.startsWith('-')) return;
+                    setSalary(v === "" ? "" : Number(v));
+                  }}
+                  className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
                 </label>
 
                 <label className="block">
                   Текущие накопления
                   <input type="number" value={totalSavingsProfile as any} onChange={(e) => {
-                  const v = e.target.value;
-                  if (v.length > 17) return;
-                  if (v.startsWith('-')) return;
-                    setTotalSavingsProfile(e.target.value === "" ? "" : Number(e.target.value))}} 
-                    className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
+                    const v = e.target.value;
+                    if (v.length > 17 || v.startsWith('-')) return;
+                    setTotalSavingsProfile(v === "" ? "" : Number(v));
+                  }}
+                  className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
                 </label>
 
                 <label className="block">
                   Откладываю в месяц
                   <input type="number" value={monthlySavingProfile as any} onChange={(e) => {
                     const v = e.target.value;
-                  if (v.length > 19) return;
-                  if (v.startsWith('-')) return;
-                    setMonthlySavingProfile(e.target.value === "" ? "" : Number(e.target.value))}} 
-                    className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
+                    if (v.length > 19 || v.startsWith('-')) return;
+                    setMonthlySavingProfile(v === "" ? "" : Number(v));
+                  }}
+                  className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
                 </label>
 
                 <label className="block col-span-1 md:col-span-2">
                   Запрещённые категории (через запятую)
-                  <input type="text" value={blockedText} onChange={(e) => setBlockedText(e.target.value)} 
+                  <input type="text" value={blockedText} onChange={(e) => setBlockedText(e.target.value)}
                   className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"
                   maxLength={40}/>
                 </label>
+
               </div>
 
               <div className="mt-3 flex gap-2">
@@ -219,30 +255,52 @@ export default function CabinetPage() {
               </div>
             </section>
 
+            {/* === АКТИВНЫЕ ЖЕЛАНИЯ === */}
             <section className="mb-6 bg-gray-800 p-4 rounded">
               <h2 className="text-xl font-semibold mb-2">Активные желания</h2>
               {loading ? <p>Загрузка...</p> : wishes.length === 0 ? <p>Нет активных желаний</p> : (
                 <div className="space-y-3">
-                  {wishes.map(w => (
-                    <div key={w.id} className="bg-gray-900 p-3 rounded border border-yellow-600">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-semibold">{w.title}</div>
-                          <div className="text-sm">Цена: {w.price} ₽ · Категория: {w.category}</div>
-                          <div className="text-xs text-yellow-300">Рекомендовано ждать: {w.recommendedCooling} дн</div>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <button onClick={() => markCompleted(w.id)} className="px-2 py-1 bg-green-600 rounded text-black">Выполнено</button>
-                          <button onClick={() => markCanceled(w.id)} className="px-2 py-1 bg-red-600 rounded text-white">Отменить</button>
-                          <button onClick={() => removeWish(w.id)} className="px-2 py-1 bg-gray-700 rounded text-yellow-100">Удалить</button>
+                  {wishes.map(w => {
+                    const comfortMonths = calcComfortPeriod(
+                      w.price,
+                      profile?.totalSavingsProfile || 0,
+                      profile?.monthlySavingProfile || 0
+                    );
+
+                    return (
+                      <div key={w.id} className="bg-gray-900 p-3 rounded border border-yellow-600">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-semibold">{w.title}</div>
+                            <div className="text-sm">Цена: {w.price} ₽ · Категория: {w.category}</div>
+                            <div className="text-xs text-yellow-300">
+                              Рекомендовано ждать: {w.recommendedCooling} дн
+                            </div>
+
+                            <div className="text-xs text-yellow-300 mt-1">
+                              Комфортная покупка через:{" "}
+                              {comfortMonths === null
+                                ? "недостижимо"
+                                : comfortMonths === 0
+                                  ? "уже можно"
+                                  : `${comfortMonths} мес.`}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-2">
+                            <button onClick={() => markCompleted(w.id)} className="px-2 py-1 bg-green-600 rounded text-black">Выполнено</button>
+                            <button onClick={() => markCanceled(w.id)} className="px-2 py-1 bg-red-600 rounded text-white">Отменить</button>
+                            <button onClick={() => removeWish(w.id)} className="px-2 py-1 bg-gray-700 rounded text-yellow-100">Удалить</button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </section>
 
+            {/* === ИСТОРИЯ === */}
             <section className="mb-6 bg-gray-800 p-4 rounded">
               <h2 className="text-xl font-semibold mb-2">История (выполненные / отменённые)</h2>
               {history.length === 0 ? <p>Еще нет истории</p> : (
@@ -253,8 +311,9 @@ export default function CabinetPage() {
                         <div>
                           <div className="font-semibold">{h.title}</div>
                           <div className="text-sm">Цена: {h.price} ₽ · Категория: {h.category}</div>
-                          <div className="text-xs text-yellow-300">Статус: {h.status} </div>
+                          <div className="text-xs text-yellow-300">Статус: {h.status}</div>
                         </div>
+
                         <div className="flex gap-2">
                           <button onClick={() => removeWish(h.id)} className="px-2 py-1 bg-gray-700 rounded">Удалить</button>
                         </div>

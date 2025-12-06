@@ -77,6 +77,21 @@ type Settings struct {
 	// MonthlySaving — ежемесячая сумма
 	// example: 300
 	MonthlySaving float64 `json:"monthlySaving"`
+	// telegramToken — токен Telegram бота
+	// example: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+	TelegramToken string `json:"telegramToken"`
+	// telegramChatId — ID чата Telegram
+	// example: "-1001234567890"
+	TelegramChatID string `json:"telegramChatId"`
+	// Email — email пользователя
+	// example: test@gmail.com
+	Email string `json:"email"`
+	// SMTPEmail — email для SMTP
+	// example: twish@twish.com
+	SMTPEmail string `json:"smtpEmail"`
+	// SMTPPassword — пароль для SMTP
+	// example: "s3cr3tP@ssw0rd"
+	SMTPPassword string `json:"smtpPassword"`
 }
 
 type UserProfile struct {

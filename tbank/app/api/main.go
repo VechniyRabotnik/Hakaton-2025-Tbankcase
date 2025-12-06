@@ -18,6 +18,7 @@ func main() {
 	storage := NewStorage()
 	router := NewRouter(storage)
 
+	http.Handle("/api/notify/", http.HandlerFunc(notifyHandler))
 	http.Handle("/swagger/*", httpSwagger.WrapHandler)
 
 	handler := func(h http.Handler) http.Handler {

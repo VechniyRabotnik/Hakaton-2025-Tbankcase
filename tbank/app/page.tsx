@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { profile } from "console";
 
 type Wish = {
   id: string;
@@ -30,8 +31,18 @@ type Settings = {
   totalPurchases?: number;
 };
 
+type Profile = {
+  nick: string;
+  salary: number;
+  totalSavingsProfile: number;
+  monthlySavingProfile: number;
+  blockedCategories: string[];
+};
+
+
 const WISHES_API = "http://localhost:8080/api/wishes";
 const SETTINGS_API = "http://localhost:8080/api/settings";
+const PROFILE_API = "http://localhost:8080/api/profile";
 
 export default function HomePage() {
   const [title, setTitle] = useState("");
@@ -43,6 +54,7 @@ export default function HomePage() {
   const [status, setStatus] = useState("");
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -63,6 +75,27 @@ export default function HomePage() {
     }
   }
 
+async function fetchProfile() {
+  try {
+    const res = await fetch(`http://localhost:8080/api/user/${userId}`);
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+
+    setProfile({
+      nick: data.nick,
+      salary: data.salary || 0,
+      totalSavingsProfile: data.totalSavingsProfile || 0,
+      monthlySavingProfile: data.monthlySavingProfile || 0,
+      blockedCategories: (data.blockedCategories || []).map((c: string) =>
+        c.toLowerCase()
+      ),
+    });
+  } catch (err) {
+    console.error("Ошибка загрузки профиля:", err);
+  }
+}
+
+
   // wishes
   async function fetchWishes() {
     try {
@@ -82,11 +115,19 @@ export default function HomePage() {
   useEffect(() => {
     fetchSettings();
     fetchWishes();
+    fetchProfile();
   }, []);
 
   async function addWish() {
     if (!title || price === "" || Number(price) <= 0) {
       alert("Введите корректные название и цену");
+      return;
+    }
+
+    const blocked = profile?.blockedCategories || [];
+
+    if (blocked.includes(category.trim().toLowerCase())) {
+      alert("Эта категория запрещена в вашем профиле.");
       return;
     }
 
