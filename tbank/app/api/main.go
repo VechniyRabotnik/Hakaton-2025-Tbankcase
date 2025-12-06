@@ -3,11 +3,22 @@ package main
 import (
 	"log"
 	"net/http"
+
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
+// @title TWish API
+// @version 1.0
+// @description MeowMeow ./<|<3|>\.
+// @host localhost:8080
+// @BasePath /
+
+// @securityDefinitions.basic  BasicAuth
 func main() {
 	storage := NewStorage()
 	router := NewRouter(storage)
+
+	http.Handle("/swagger/*", httpSwagger.WrapHandler)
 
 	handler := func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

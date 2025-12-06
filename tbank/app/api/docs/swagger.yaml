@@ -1,0 +1,239 @@
+basePath: /
+definitions:
+  main.CooldownRange:
+    description: Диапазон охлаждения для настроек.
+    properties:
+      max:
+        description: |-
+          Max — максимальное значение
+          example: 10000
+        type: number
+      min:
+        description: |-
+          Min — минимальное значение
+          example: 1
+        type: number
+      period:
+        description: |-
+          Period — период охлаждения в днях
+          example: 7
+        type: integer
+    type: object
+  main.Settings:
+    description: Настройки пользователя.
+    properties:
+      cooldowns:
+        description: Cooldowns — диапазоны охлаждения
+        items:
+          $ref: '#/definitions/main.CooldownRange'
+        type: array
+      excludedProducts:
+        description: |-
+          ExcludedProducts — исключённые продукты
+          example: "алкоголь"
+        type: string
+      monthlySaving:
+        description: |-
+          MonthlySaving — ежемесячая сумма
+          example: 300
+        type: number
+      notificationChannel:
+        description: |-
+          NotificationChannel — канал уведомлений
+          example: "email"
+        type: string
+      notificationFrequency:
+        description: |-
+          NotificationFreq — частота уведомлений
+          example: "еженедельно"
+        type: string
+      totalPurchases:
+        description: |-
+          TotalPurchases — всего покупок
+          example: 25
+        type: integer
+      totalSpent:
+        description: |-
+          TotalSpent — потрачено всего
+          example: 1500
+        type: number
+    type: object
+  main.Wish:
+    description: Информация о желании пользователя.
+    properties:
+      category:
+        description: |-
+          Category — категория желания
+          example: "Электроника"
+        type: string
+      coolingDays:
+        description: |-
+          CoolingDays — количество дней на "остывание"
+          example: 5
+        type: integer
+      createdAt:
+        description: |-
+          CreatedAt — дата и время создания желания
+          example: "2024-01-01T12:00:00Z"
+        type: string
+      id:
+        description: |-
+          ID — уникальный идентификатор
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        type: string
+      price:
+        description: |-
+          Price — цена в рублях
+          example: 10 000
+        type: number
+      recommendedCooling:
+        description: |-
+          RecommendedCooling — рекомендованное количество дней на "остывание"
+          example: 7
+        type: integer
+      stillWant:
+        description: |-
+          StillWant — флаг, указывающий, хочет ли пользователь всё ещё это желание
+          example: true
+        type: boolean
+      title:
+        description: |-
+          Title — название желания
+          example: "Новый Ноутбук"
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: MeowMeow ./<|<3|>\.
+  title: TWish API
+  version: "1.0"
+paths:
+  /users/{userId}/settings:
+    get:
+      description: Возвращает настройки пользователя по его ID
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: userId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Settings'
+      summary: Получить настройки пользователя
+      tags:
+      - settings
+    post:
+      description: Сохраняет настройки пользователя по его ID
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Настройки
+        in: body
+        name: settings
+        required: true
+        schema:
+          $ref: '#/definitions/main.Settings'
+      responses:
+        "200":
+          description: успешно сохранено
+          schema:
+            type: string
+      summary: Сохранить настройки пользователя
+      tags:
+      - settings
+  /users/{userId}/wishes:
+    get:
+      description: Возвращает все желания пользователя по его ID
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: userId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.Wish'
+            type: array
+      summary: Получить список желаний пользователя
+      tags:
+      - wishes
+    post:
+      description: Добавляет новое желание пользователя
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Желание
+        in: body
+        name: wish
+        required: true
+        schema:
+          $ref: '#/definitions/main.Wish'
+      responses:
+        "200":
+          description: успешно добавлено
+          schema:
+            type: string
+      summary: Добавить желание
+      tags:
+      - wishes
+  /users/{userId}/wishes/{wishId}:
+    delete:
+      description: Удаляет желание пользователя по его ID
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: ID желания
+        in: path
+        name: wishId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: успешно удалено
+          schema:
+            type: string
+      summary: Удалить желание
+      tags:
+      - wishes
+  /users/{userId}/wishes/{wishId}/toggle:
+    post:
+      description: Переключает статус StillWant для желания по его ID
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: ID желания
+        in: path
+        name: wishId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: успешно обновлено
+          schema:
+            type: string
+      summary: Переключить статус желания
+      tags:
+      - wishes
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"
