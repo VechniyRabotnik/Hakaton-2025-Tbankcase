@@ -106,13 +106,40 @@ export default function SettingsPage() {
     }
   }
 
+  async function sendTestNotification() {
+    await fetch(`http://localhost:8080/api/notify/${userId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Проверка уведомлений",
+        message: "Если ты видишь это — всё работает!",
+        type: "debug",
+      }),
+    });
+
+    if ("Notification" in window) {
+      const permission = await Notification.requestPermission();
+
+      if (permission === "granted") {
+        const n = new Notification("Проверка уведомлений", {
+          body: "Нажми здесь, чтобы открыть приложение",
+        });
+
+        n.onclick = () => window.open("http://localhost:3000", "_blank");
+      } else {
+        alert("Разреши уведомления в браузере.");
+      }
+    } else {
+      alert("Уведомления не поддерживаются браузером.");
+    }
+  }
+
+
   return (
     <div className="min-h-screen bg-gray-900 text-yellow-100 p-6 font-sans transition-colors duration-300 hover:bg-gray-800">
       <div className="max-w-5xl mx-auto">
-        {/* Заголовок с SVG */}
         <header className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
           <div className="flex items-center space-x-4">
-            {/* SVG иконка */}
             <svg
               className="w-10 h-10 text-yellow-300 animate-bounce"
               fill="currentColor"
@@ -126,10 +153,8 @@ export default function SettingsPage() {
           </div>
         </header>
 
-        {/* Диапазоны охлаждений */}
         <section className="mb-8 bg-gray-800 p-6 rounded-lg shadow-lg transition-transform hover:shadow-xl hover:-translate-y-2 duration-300">
           <h2 className="flex items-center text-xl font-semibold mb-4 space-x-3">
-            {/* Иконка */}
             <svg
               className="w-6 h-6 text-yellow-400"
               fill="currentColor"
@@ -179,10 +204,8 @@ export default function SettingsPage() {
           </button>
         </section>
 
-        {/* Настройки нотификатора */}
         <section className="mb-8 bg-gray-800 p-6 rounded-lg shadow-lg transition-transform hover:shadow-xl hover:-translate-y-2 duration-300">
           <h2 className="flex items-center text-xl font-semibold mb-4 space-x-3">
-            {/* Иконка */}
             <svg
               className="w-6 h-6 text-yellow-400"
               fill="currentColor"
@@ -260,10 +283,8 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* Константы с накоплениями */}
         <section className="mb-8 bg-gray-800 p-6 rounded-lg shadow-lg transition-transform hover:shadow-xl hover:-translate-y-2 duration-300">
           <h2 className="flex items-center text-xl font-semibold mb-4 space-x-3">
-            {/* Иконка */}
             <svg
               className="w-6 h-6 text-yellow-400"
               fill="currentColor"
@@ -321,8 +342,19 @@ export default function SettingsPage() {
             </label>
           </div>
         </section>
+        <section className="mb-8 bg-gray-800 p-6 rounded-lg shadow-lg">
+          <h2 className="text-xl font-semibold mb-4 text-yellow-400">
+            Тест уведомления
+          </h2>
 
-        {/* Кнопки */}
+          <button
+            onClick={sendTestNotification}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded font-semibold"
+          >
+            Отправить тестовое уведомление
+          </button>
+        </section>
+
         <div className="flex flex-col md:flex-row gap-4 justify-center md:justify-start mb-8">
           <button
             onClick={handleSave}
