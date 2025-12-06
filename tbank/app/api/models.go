@@ -26,9 +26,18 @@ type Wish struct {
 	// StillWant — флаг, указывающий, хочет ли пользователь всё ещё это желание
 	// example: true
 	StillWant bool `json:"stillWant"`
+	// Status — статус желания
+	// example: "active"
+	Status string `json:"status"`
 	// CreatedAt — дата и время создания желания
 	// example: "2024-01-01T12:00:00Z"
 	CreatedAt time.Time `json:"createdAt"`
+	// UpdateAt — дата и время последнего обновления желания
+	// example: "2024-01-05T15:30:00Z"
+	UpdateAt time.Time `json:"updateAt"`
+	// ComfortMonths — количество месяцев комфорта для желания
+	// example: 3
+	ComfortMonths int `json:"comfortMonths"`
 }
 
 // CooldownRange представляет диапазон охлаждения.
@@ -68,4 +77,25 @@ type Settings struct {
 	// MonthlySaving — ежемесячая сумма
 	// example: 300
 	MonthlySaving float64 `json:"monthlySaving"`
+}
+
+type UserProfile struct {
+	// Nick — никнейм пользователя
+	// example: "TestMeowUser"
+	Nick string `json:"nick"`
+	// Salary — зарплата пользователя
+	// example: 50000
+	Salary float64 `json:"salary"`
+	// TotalSavings — текущие сбережения
+	// example: 20000
+	TotalSavings float64 `json:"totalSavings"`
+	// MonthlySaving — ежемесячные сбережения
+	// example: 5000
+	MonthlySaving float64 `json:"monthlySaving"`
+	// ComfortPercent — процент комфорта
+	// example: 0.5 == 50%
+	ComfortPercent float64 `json:"comfortPercent"`
+	// BlockedCategories — заблокированные категории
+	// example: ["алкоголь"]
+	BlockedCategories []string `json:"blockedCategories"`
 }

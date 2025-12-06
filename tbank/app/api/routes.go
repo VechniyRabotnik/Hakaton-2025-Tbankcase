@@ -75,5 +75,26 @@ func NewRouter(storage *Storage) *mux.Router {
 	// @Router /api/settings/{userId} [post]
 	api.HandleFunc("/settings/{userId}", SaveSettingsHandler(storage)).Methods("POST")
 
+	// profile
+	// @Summary Получить профиль пользователя
+	// @Description Возвращает профиль по нику пользователя
+	// @Tags profile
+	// @Accept  json
+	// @Produce  json
+	// @Param nick path string true "Ник пользователя"
+	// @Success 200 {object} UserProfile
+	// @Router /api/user/{nick} [get]
+	api.HandleFunc("/user/{nick}", GetProfileHandler(storage)).Methods("GET")
+	// @Summary Сохранить профиль пользователя
+	// @Description Сохраняет профиль по нику пользователя
+	// @Tags profile
+	// @Accept  json
+	// @Produce  json
+	// @Param nick path string true "Ник пользователя"
+	// @Param profile body UserProfile true "Объект профиля"
+	// @Success 200 {string} string "успешно сохранено"
+	// @Router /api/user/{nick} [post]
+	api.HandleFunc("/user/{nick}", SaveProfileHandler(storage)).Methods("POST")
+
 	return r
 }

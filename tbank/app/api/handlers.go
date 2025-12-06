@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -26,6 +27,28 @@ func calcRecommendedCooling(price float64, settings Settings) int {
 	return 7 // дефолт
 }
 
+func CalculateComfortMonths(profile UserProfile, price float64) int {
+
+	remainCoef := 1 - profile.ComfortPercent
+	if remainCoef <= 0 {
+		return -1 // Как?
+	}
+
+	leftPart := price - profile.TotalSavings*remainCoef
+	if leftPart <= 0 {
+		return 0 // можно покупать
+	}
+
+	if profile.MonthlySaving <= 0 {
+		return -1 // невозможно
+	}
+
+	months := leftPart / (profile.MonthlySaving * remainCoef)
+
+	// округляем чтоб было красиво
+	return int(math.Ceil(months))
+}
+
 // GetWishesHandler возвращает обработчик для получения желаний пользователя
 // @Summary Получить список желаний пользователя
 // @Description Возвращает все желания пользователя по его ID
@@ -37,9 +60,11 @@ func calcRecommendedCooling(price float64, settings Settings) int {
 func GetWishesHandler(storage *Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userId := mux.Vars(r)["userId"]
-		wishes := storage.GetWishes(userId)
-
-		json.NewEncoder(w).Encode(wishes)
+		status := r.URL.Query().Get("status") // optional: active/completed/cancelled
+		log.Printf("[Handler] GET wishes for %s (status=%s)\n", userId, status)
+		out := storage.GetWishes(userId, status)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(out)
 	}
 }
 
@@ -73,6 +98,7 @@ func AddWishHandler(storage *Storage) http.HandlerFunc {
 			RecommendedCooling: calcRecommendedCooling(body.Price, settings),
 			StillWant:          true,
 			CreatedAt:          time.Now(),
+			Status:             "active",
 		}
 
 		storage.AddWish(userId, wish)
@@ -90,10 +116,21 @@ func AddWishHandler(storage *Storage) http.HandlerFunc {
 // @Router /users/{userId}/wishes/{wishId}/toggle [post]
 func ToggleWishHandler(storage *Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userId := mux.Vars(r)["userId"]
-		wishId := mux.Vars(r)["wishId"]
-
-		storage.ToggleStillWant(userId, wishId)
+		vars := mux.Vars(r)
+		userId := vars["userId"]
+		wishId := vars["wishId"]
+		action := r.URL.Query().Get("action") // "complete" or "cancel"
+		target := "active"
+		if action == "complete" {
+			target = "completed"
+		} else if action == "cancel" {
+			target = "canceled"
+		}
+		ok := storage.UpdateWishStatus(userId, wishId, target)
+		if !ok {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 	}
 }
@@ -108,11 +145,15 @@ func ToggleWishHandler(storage *Storage) http.HandlerFunc {
 // @Router /users/{userId}/wishes/{wishId} [delete]
 func RemoveWishHandler(storage *Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userId := mux.Vars(r)["userId"]
-		wishId := mux.Vars(r)["wishId"]
-
-		storage.RemoveWish(userId, wishId)
-		w.WriteHeader(http.StatusOK)
+		vars := mux.Vars(r)
+		userId := vars["userId"]
+		wishId := vars["wishId"]
+		ok := storage.RemoveWish(userId, wishId)
+		if !ok {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -127,7 +168,10 @@ func RemoveWishHandler(storage *Storage) http.HandlerFunc {
 func GetSettingsHandler(storage *Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userId := mux.Vars(r)["userId"]
-		json.NewEncoder(w).Encode(storage.GetSettings(userId))
+		log.Printf("[Handler] GET settings for %s\n", userId)
+		set := storage.GetSettings(userId)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(set)
 	}
 }
 
@@ -142,13 +186,65 @@ func GetSettingsHandler(storage *Storage) http.HandlerFunc {
 func SaveSettingsHandler(storage *Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userId := mux.Vars(r)["userId"]
-
 		var set Settings
-		json.NewDecoder(r.Body).Decode(&set)
-
+		if err := json.NewDecoder(r.Body).Decode(&set); err != nil {
+			http.Error(w, "invalid json", http.StatusBadRequest)
+			return
+		}
 		storage.SaveSettings(userId, set)
-
-		log.Println("[Settings] Saved:", set)
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// GetProfileHandler создает обработчик для получения профиля пользователя
+// @Summary Получить профиль пользователя
+// @Description Возвращает профиль по нику пользователя
+// @Tags profile
+// @Param nick path string true "Ник пользователя"
+// @Produce json
+// @Success 200 {object} UserProfile
+// @Router /users/{nick}/profile [get]
+func GetProfileHandler(storage *Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		nick := mux.Vars(r)["nick"]
+		log.Printf("[Handler] GET profile for %s\n", nick)
+		if p, ok := storage.GetProfile(nick); ok {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(p)
+			return
+		}
+		// return
+		def := UserProfile{
+			Nick:              nick,
+			Salary:            0,
+			TotalSavings:      0,
+			MonthlySaving:     0,
+			BlockedCategories: []string{},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(def)
+	}
+}
+
+// SaveProfileHandler создает обработчик для сохранения профиля пользователя
+// @Summary Сохранить профиль пользователя
+// @Description Сохраняет профиль по нику пользователя
+// @Tags profile
+// @Param nick path string true "Ник пользователя"
+// @Param profile body UserProfile true "Объект профиля"
+// @Success 200 {string} string "успешно сохранено"
+// @Router /users/{nick}/profile [post]
+func SaveProfileHandler(storage *Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		nick := mux.Vars(r)["nick"]
+		var p UserProfile
+		if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+			http.Error(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+		p.Nick = nick
+		storage.SaveProfile(nick, p)
+		w.WriteHeader(http.StatusOK)
+		log.Printf("[Handler] Saved profile for %s: %+v\n", nick, p)
 	}
 }

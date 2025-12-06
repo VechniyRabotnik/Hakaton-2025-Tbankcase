@@ -45,7 +45,7 @@ export default function HomePage() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const userId = "testmeowmeowmeow";
+  const userId = "testmeowmeow";
 
   // nastr
   async function fetchSettings() {
@@ -156,6 +156,15 @@ export default function HomePage() {
         <header className="flex items-start justify-between mb-8 gap-4">
           <h1 className="text-4xl font-extrabold text-yellow-300">T-Желания — помощник против импульсивных покупок</h1>
           <div className="flex gap-3">
+            <button
+              onClick={() => router.push("/cabinet")}
+              className={`px-4 py-2 bg-gray-800 text-yellow-300 rounded ${
+                pathname === "/cabinet" ? "ring-2 ring-yellow-400" : "hover:bg-gray-700"
+              }`}
+            >
+              Личный кабинет
+            </button>
+
             <button
               onClick={() => router.push("/settings")}
               className={`px-4 py-2 bg-gray-800 text-yellow-300 rounded ${pathname === "/settings" ? "ring-2 ring-yellow-400" : "hover:bg-gray-700"}`}
