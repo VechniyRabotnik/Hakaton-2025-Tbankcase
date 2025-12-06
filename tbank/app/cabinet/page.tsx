@@ -18,8 +18,8 @@ type Wish = {
 type Profile = {
   nick: string;
   salary: number;
-  totalSavings: number;
-  monthlySaving: number;
+  totalSavingsProfile: number;
+  monthlySavingProfile: number;
   blockedCategories: string[];
 };
 
@@ -35,8 +35,8 @@ export default function CabinetPage() {
   const [loading, setLoading] = useState(false);
 
   const [salary, setSalary] = useState<number | "">("");
-  const [totalSavings, setTotalSavings] = useState<number | "">("");
-  const [monthlySaving, setMonthlySaving] = useState<number | "">("");
+  const [totalSavingsProfile, setTotalSavingsProfile] = useState<number | "">("");
+  const [monthlySavingProfile, setMonthlySavingProfile] = useState<number | "">("");
 
  useEffect(() => {
     const storedNick = localStorage.getItem("nick");
@@ -66,13 +66,13 @@ export default function CabinetPage() {
       setProfile({
         nick: pjson.nick,
         salary: pjson.salary || 0,
-        totalSavings: pjson.totalSavings || 0,
-        monthlySaving: pjson.monthlySaving || 0,
+        totalSavingsProfile: pjson.totalSavingsProfile || 0,
+        monthlySavingProfile: pjson.monthlySavingProfile || 0,
         blockedCategories: pjson.blockedCategories || [],
       });
       setSalary(pjson.salary || "");
-      setTotalSavings(pjson.totalSavings || "");
-      setMonthlySaving(pjson.monthlySaving || "");
+      setTotalSavingsProfile(pjson.totalSavingsProfile || "");
+      setMonthlySavingProfile(pjson.monthlySavingProfile || "");
       setBlockedText((pjson.blockedCategories || []).join(", "));
 
       // active
@@ -101,8 +101,8 @@ export default function CabinetPage() {
     const body = {
       nick,
       salary: salary === "" ? 0 : Number(salary),
-      totalSavings: totalSavings === "" ? 0 : Number(totalSavings),
-      monthlySaving: monthlySaving === "" ? 0 : Number(monthlySaving),
+      totalSavingsProfile: totalSavingsProfile === "" ? 0 : Number(totalSavingsProfile),
+      monthlySavingProfile: monthlySavingProfile === "" ? 0 : Number(monthlySavingProfile),
       blockedCategories: blockedText.split(",").map(s => s.trim()).filter(Boolean),
     };
     try {
@@ -182,12 +182,12 @@ export default function CabinetPage() {
 
                 <label className="block">
                   Текущие накопления
-                  <input type="number" value={totalSavings as any} onChange={(e) => setTotalSavings(e.target.value === "" ? "" : Number(e.target.value))} className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
+                  <input type="number" value={totalSavingsProfile as any} onChange={(e) => setTotalSavingsProfile(e.target.value === "" ? "" : Number(e.target.value))} className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
                 </label>
 
                 <label className="block">
                   Откладываю в месяц
-                  <input type="number" value={monthlySaving as any} onChange={(e) => setMonthlySaving(e.target.value === "" ? "" : Number(e.target.value))} className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
+                  <input type="number" value={monthlySavingProfile as any} onChange={(e) => setMonthlySavingProfile(e.target.value === "" ? "" : Number(e.target.value))} className="w-full p-2 rounded bg-gray-900 text-yellow-100 mt-1"/>
                 </label>
 
                 <label className="block col-span-1 md:col-span-2">

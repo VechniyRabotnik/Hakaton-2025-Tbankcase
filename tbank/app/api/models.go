@@ -86,12 +86,12 @@ type UserProfile struct {
 	// Salary — зарплата пользователя
 	// example: 50000
 	Salary float64 `json:"salary"`
-	// TotalSavings — текущие сбережения
+	// TotalSavingsProfile — текущие сбережения
 	// example: 20000
-	TotalSavings float64 `json:"totalSavings"`
-	// MonthlySaving — ежемесячные сбережения
+	TotalSavingsProfile float64 `json:"totalSavingsProfile"`
+	// MonthlySavingProfile — ежемесячные сбережения
 	// example: 5000
-	MonthlySaving float64 `json:"monthlySaving"`
+	MonthlySavingProfile float64 `json:"monthlySavingProfile"`
 	// ComfortPercent — процент комфорта
 	// example: 0.5 == 50%
 	ComfortPercent float64 `json:"comfortPercent"`

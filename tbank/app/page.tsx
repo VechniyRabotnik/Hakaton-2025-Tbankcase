@@ -36,8 +36,8 @@ export default function HomePage() {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState<number | "">("");
   const [category, setCategory] = useState("");
-  const [savings, setSavings] = useState<number | "">("");
-  const [perMonth, setPerMonth] = useState<number | "">("");
+  const [totalSpent, setTotalSpent] = useState<number | "">("");
+  const [monthlySaving, setMonthlySaving] = useState<number | "">("");
   const [wishes, setWishes] = useState<Wish[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,8 +54,8 @@ export default function HomePage() {
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     setSettings(data);
-    setSavings(data.totalSpent || "");
-    setPerMonth(data.monthlySaving || "");
+    setTotalSpent(data.totalSpent || "");
+    setMonthlySaving(data.monthlySaving || "");
     } catch (err: any) {
       console.error("Ошибка загрузки настроек:", err.message);
     }
@@ -94,8 +94,8 @@ export default function HomePage() {
       category,
     };
 
-    if (savings !== "") payload.savings = Number(savings);
-    if (perMonth !== "") payload.perMonth = Number(perMonth);
+    if (totalSpent !== "") payload.totalSpent = Number(totalSpent);
+    if (monthlySaving !== "") payload.monthlySaving = Number(monthlySaving);
 
     try {
       const res = await fetch(`${WISHES_API}/${userId}`, {
@@ -114,8 +114,8 @@ export default function HomePage() {
       setTitle("");
       setPrice("");
       setCategory("");
-      //setSavings("");
-      //setPerMonth("");
+      //setTotalSpent("");
+      //setMonthlySaving("");
     } catch (err: any) {
       console.error("Ошибка добавления:", err);
       alert("Не удалось добавить желание: " + (err.message || err));
@@ -202,20 +202,20 @@ export default function HomePage() {
             <input
               placeholder="Накопления (необязательно)"
               type="number"
-              value={savings}
+              value={totalSpent}
               onChange={(e) => {
                 const v = e.target.value;
-                setSavings(v === "" ? "" : Number(v));
+                setTotalSpent(v === "" ? "" : Number(v));
               }}
               className="p-3 rounded border border-yellow-600 bg-gray-900 text-yellow-100"
             />
             <input
               placeholder="Откладываю в месяц (необязательно)"
               type="number"
-              value={perMonth}
+              value={monthlySaving}
               onChange={(e) => {
                 const v = e.target.value;
-                setPerMonth(v === "" ? "" : Number(v));
+                setMonthlySaving(v === "" ? "" : Number(v));
               }}
               className="p-3 rounded border border-yellow-600 bg-gray-900 text-yellow-100"
             />

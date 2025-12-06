@@ -32,7 +32,7 @@ export default function SettingsPage() {
   const [monthlySaving, setMonthlySaving] = useState<number | "">("");
 
   const router = useRouter();
-  const userId = "testmeowmeowmeow";
+  const userId = "testmeowmeow";
 
   useEffect(() => {
     loadSettings();

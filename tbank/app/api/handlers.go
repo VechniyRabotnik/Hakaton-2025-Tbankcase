@@ -34,16 +34,16 @@ func CalculateComfortMonths(profile UserProfile, price float64) int {
 		return -1 // Как?
 	}
 
-	leftPart := price - profile.TotalSavings*remainCoef
+	leftPart := price - profile.TotalSavingsProfile*remainCoef
 	if leftPart <= 0 {
 		return 0 // можно покупать
 	}
 
-	if profile.MonthlySaving <= 0 {
+	if profile.MonthlySavingProfile <= 0 {
 		return -1 // невозможно
 	}
 
-	months := leftPart / (profile.MonthlySaving * remainCoef)
+	months := leftPart / (profile.MonthlySavingProfile * remainCoef)
 
 	// округляем чтоб было красиво
 	return int(math.Ceil(months))
@@ -215,11 +215,11 @@ func GetProfileHandler(storage *Storage) http.HandlerFunc {
 		}
 		// return
 		def := UserProfile{
-			Nick:              nick,
-			Salary:            0,
-			TotalSavings:      0,
-			MonthlySaving:     0,
-			BlockedCategories: []string{},
+			Nick:                 nick,
+			Salary:               0,
+			TotalSavingsProfile:  0,
+			MonthlySavingProfile: 0,
+			BlockedCategories:    []string{},
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(def)
