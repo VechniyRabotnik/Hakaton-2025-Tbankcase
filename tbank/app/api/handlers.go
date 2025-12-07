@@ -27,6 +27,7 @@ func calcRecommendedCooling(price float64, settings Settings) int {
 	return 7 // дефолт
 }
 
+// CalculateComfortMonths рассчитывает количество месяцев комфорта для желания
 func CalculateComfortMonths(profile UserProfile, price float64) int {
 
 	remainCoef := 1 - profile.ComfortPercent

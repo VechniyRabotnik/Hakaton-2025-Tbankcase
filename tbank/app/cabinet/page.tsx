@@ -193,7 +193,9 @@ export default function CabinetPage() {
             />
             <button
               className="px-4 py-2 bg-yellow-500 text-black rounded font-semibold hover:bg-yellow-600 transition"
-              onClick={() => saveNickToLocal(nick.trim())}
+              onClick={() => {
+                saveNickToLocal(nick.trim());
+                loadProfileAndWishes(); }}
             >
               Войти
             </button>
@@ -278,11 +280,11 @@ export default function CabinetPage() {
                   <label className="block mb-1 font-semibold">Запрещённые категории</label>
                   <input
                     type="text"
+                    value={blockedText}
+                    onChange={(e) => setBlockedText(e.target.value)}
                     className="w-full p-2 rounded bg-gray-700 border border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400 text-yellow-100"
                     placeholder="через запятую"
                     maxLength={40}
-                    value={blockedText}
-                    onChange={(e) => setBlockedText(e.target.value)}
                   />
                 </div>
               </div>
