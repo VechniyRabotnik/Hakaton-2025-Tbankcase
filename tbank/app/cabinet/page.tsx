@@ -53,11 +53,11 @@ export default function CabinetPage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (nick) {
-      loadProfileAndWishes();
-    }
-  }, [nick]);
+  //useEffect(() => {
+  //  if (nick) {
+  //    loadProfileAndWishes();
+  //  }
+  //}, [nick]);
 
   function saveNickToLocal(n: string) {
     localStorage.setItem("nick", n);
@@ -189,13 +189,18 @@ export default function CabinetPage() {
               className="p-2 bg-gray-700 rounded text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-400"
               placeholder="Введите ник"
               value={nick}
-              onChange={(e) => setNick(e.target.value)}
+              onChange={(e) => setNick("testmeowmeow")}
             />
             <button
               className="px-4 py-2 bg-yellow-500 text-black rounded font-semibold hover:bg-yellow-600 transition"
               onClick={() => {
+                if (nick !== "testmeowmeow") {
+                  alert('Доступ разрешен только по никнейму "testmeowmeow"');
+                  return;
+                }
                 saveNickToLocal(nick.trim());
-                loadProfileAndWishes(); }}
+                loadProfileAndWishes();
+              }}
             >
               Войти
             </button>

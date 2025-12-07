@@ -121,7 +121,7 @@ export default function HomePage() {
 
     const blocked = profile?.blockedCategories || [];
 
-    if (blocked.includes(category.trim().toLowerCase())) {
+    if (blocked.some(blockedCategories => blockedCategories.includes(blockedCategories))) {
       alert("Эта категория запрещена в вашем профиле.");
       return;
     }
@@ -238,7 +238,7 @@ export default function HomePage() {
               className="p-3 rounded border border-yellow-600 bg-gray-900 text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
             />
             <input
-              placeholder="Категория"
+              placeholder="Категория ( маленькими буквами )"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="p-3 rounded border border-yellow-600 bg-gray-900 text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
